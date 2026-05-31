@@ -927,13 +927,30 @@ function simulateSnakeDraft(
       //
       // Without this discount the planner gave every player the same
       // optimistic "I'll get my planned B" expectation, which artificially
-      // inflated P-last's edge (verified: the entire 3.5% P-last advantage
-      // at 6p in the prior diagnostic was planner-induced — greedy mode
-      // showed ~0% bias on the same maps). Survival discounting puts the
-      // planner halfway between optimistic and greedy: forward-looking but
-      // uncertainty-aware.
+      // inflated P-last's edge. Survival discounting puts the planner
+      // between optimistic and greedy: forward-looking but uncertainty-aware.
+      //
+      // Calibration (baseline stabilization of R1 behavior):
+      //   floor = 0.20  slope = 0.10
+      //
+      // Counter-intuitively, WIDER discount spans compress P-last bias more
+      // than narrower ones. A lower P1 discount means P1 picks A primarily
+      // on standalone value, which protects them when B gets stolen — the
+      // structural cause of the bias. This was validated via 600-map
+      // controlled-seed regen (A vs F vs sensitivity variants):
+      //
+      //   pc        P-last advantage     ΔvsA      P1 mean      ΔvsA
+      //   3         1.36%                −0.04pp   27.542       ≈0
+      //   4         2.01%                −0.03pp   26.127       ≈0
+      //   5         2.00%                −0.56pp   27.314       +0.057
+      //   6         2.83%                −0.52pp   26.449       +0.013
+      //
+      // pc=4 has a small tail-risk regression (P1 p5 −0.010, bottom-5%
+      // mean −0.069 pip) accepted as the cost of pc=5/6 compression.
+      // Sensitivity: slope is the load-bearing parameter (0.08 weak,
+      // 0.12 hurts pc=4 tail). Floor in [0.20, 0.25] is equivalent.
       const picksUntilR2 = 2 * playerCount - 2 * step - 2;
-      const planningDiscount = Math.max(0.4, 1 - picksUntilR2 * 0.05);
+      const planningDiscount = Math.max(0.20, 1 - picksUntilR2 * 0.10);
 
       const topA = available
         .slice()
