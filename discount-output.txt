@@ -1,0 +1,89 @@
+﻿
+[1m[7m[36m RUN [39m[27m[22m [36mv2.1.9 [39m[90mD:/Personal Projects/Catan Map Generator[39m
+
+[90mstdout[2m | tests/stress-discount-tuning.test.ts[2m > [22m[2mdiscount tuning[2m > [22m[2mcompare survival-discount strategies
+[22m[39m
+========================== pc=3 (n=400) ==========================
+Discount values per slot (P1 to P-last):
+  A: max(0.4, 1 − K·0.05)       0.80 → 0.90 → 1.00   (span 0.20)
+  B: 1 − (K/Kmax)·0.30          0.70 → 0.85 → 1.00   (span 0.30)
+  C: 1 − (K/Kmax)·0.40          0.60 → 0.80 → 1.00   (span 0.40)
+  D: max(0.3, 1 − K·0.07)       0.72 → 0.86 → 1.00   (span 0.28)
+  E: 1 − (K/Kmax)·0.25          0.75 → 0.88 → 1.00   (span 0.25)
+  GREEDY (reference)            (no pair eval)
+
+  400 maps in 7.8s
+
+Strategy                       per-player means (centered on mode mean)            P-last − P1   stdev mean
+  A: max(0.4, 1 − K·0.05)       P1:-0.40%  P2:-0.32%  P3:+0.72%     1.12%      0.383
+  B: 1 − (K/Kmax)·0.30          P1:-0.37%  P2:-0.33%  P3:+0.70%     1.08%      0.382
+  C: 1 − (K/Kmax)·0.40          P1:-0.36%  P2:-0.32%  P3:+0.68%     1.04%      0.381
+  D: max(0.3, 1 − K·0.07)       P1:-0.38%  P2:-0.33%  P3:+0.70%     1.08%      0.382
+  E: 1 − (K/Kmax)·0.25          P1:-0.38%  P2:-0.33%  P3:+0.72%     1.11%      0.383
+  GREEDY (reference)            P1:+0.12%  P2:-0.08%  P3:-0.04%    -0.16%      0.323
+
+========================== pc=4 (n=400) ==========================
+Discount values per slot (P1 to P-last):
+  A: max(0.4, 1 − K·0.05)       0.70 → 0.80 → 0.90 → 1.00   (span 0.30)
+  B: 1 − (K/Kmax)·0.30          0.70 → 0.80 → 0.90 → 1.00   (span 0.30)
+  C: 1 − (K/Kmax)·0.40          0.60 → 0.73 → 0.87 → 1.00   (span 0.40)
+  D: max(0.3, 1 − K·0.07)       0.58 → 0.72 → 0.86 → 1.00   (span 0.42)
+  E: 1 − (K/Kmax)·0.25          0.75 → 0.83 → 0.92 → 1.00   (span 0.25)
+  GREEDY (reference)            (no pair eval)
+
+  400 maps in 13.4s
+
+Strategy                       per-player means (centered on mode mean)            P-last − P1   stdev mean
+  A: max(0.4, 1 − K·0.05)       P1:-0.57%  P2:-0.38%  P3:-0.27%  P4:+1.22%     1.80%      0.443
+  B: 1 − (K/Kmax)·0.30          P1:-0.57%  P2:-0.38%  P3:-0.27%  P4:+1.22%     1.80%      0.443
+  C: 1 − (K/Kmax)·0.40          P1:-0.59%  P2:-0.34%  P3:-0.30%  P4:+1.23%     1.82%      0.445
+  D: max(0.3, 1 − K·0.07)       P1:-0.59%  P2:-0.34%  P3:-0.30%  P4:+1.23%     1.83%      0.445
+  E: 1 − (K/Kmax)·0.25          P1:-0.64%  P2:-0.37%  P3:-0.26%  P4:+1.27%     1.92%      0.455
+  GREEDY (reference)            P1:-0.38%  P2:-0.08%  P3:+0.26%  P4:+0.20%     0.58%      0.417
+
+========================== pc=5 (n=400) ==========================
+Discount values per slot (P1 to P-last):
+  A: max(0.4, 1 − K·0.05)       0.60 → 0.70 → 0.80 → 0.90 → 1.00   (span 0.40)
+  B: 1 − (K/Kmax)·0.30          0.70 → 0.78 → 0.85 → 0.93 → 1.00   (span 0.30)
+  C: 1 − (K/Kmax)·0.40          0.60 → 0.70 → 0.80 → 0.90 → 1.00   (span 0.40)
+  D: max(0.3, 1 − K·0.07)       0.44 → 0.58 → 0.72 → 0.86 → 1.00   (span 0.56)
+  E: 1 − (K/Kmax)·0.25          0.75 → 0.81 → 0.88 → 0.94 → 1.00   (span 0.25)
+  GREEDY (reference)            (no pair eval)
+
+  400 maps in 58.1s
+
+Strategy                       per-player means (centered on mode mean)            P-last − P1   stdev mean
+  A: max(0.4, 1 − K·0.05)       P1:-0.64%  P2:-0.61%  P3:-0.51%  P4:-0.23%  P5:+1.99%     2.65%      0.518
+  B: 1 − (K/Kmax)·0.30          P1:-0.74%  P2:-0.72%  P3:-0.49%  P4:-0.23%  P5:+2.18%     2.95%      0.548
+  C: 1 − (K/Kmax)·0.40          P1:-0.64%  P2:-0.61%  P3:-0.51%  P4:-0.23%  P5:+1.99%     2.65%      0.518
+  D: max(0.3, 1 − K·0.07)       P1:-0.51%  P2:-0.60%  P3:-0.56%  P4:-0.25%  P5:+1.92%     2.45%      0.511
+  E: 1 − (K/Kmax)·0.25          P1:-0.74%  P2:-0.76%  P3:-0.52%  P4:-0.22%  P5:+2.24%     3.00%      0.556
+  GREEDY (reference)            P1:+0.45%  P2:-0.02%  P3:-0.13%  P4:-0.12%  P5:-0.19%    -0.64%      0.353
+
+========================== pc=6 (n=400) ==========================
+Discount values per slot (P1 to P-last):
+  A: max(0.4, 1 − K·0.05)       0.50 → 0.60 → 0.70 → 0.80 → 0.90 → 1.00   (span 0.50)
+  B: 1 − (K/Kmax)·0.30          0.70 → 0.76 → 0.82 → 0.88 → 0.94 → 1.00   (span 0.30)
+  C: 1 − (K/Kmax)·0.40          0.60 → 0.68 → 0.76 → 0.84 → 0.92 → 1.00   (span 0.40)
+  D: max(0.3, 1 − K·0.07)       0.30 → 0.44 → 0.58 → 0.72 → 0.86 → 1.00   (span 0.70)
+  E: 1 − (K/Kmax)·0.25          0.75 → 0.80 → 0.85 → 0.90 → 0.95 → 1.00   (span 0.25)
+  GREEDY (reference)            (no pair eval)
+
+  400 maps in 57.8s
+
+Strategy                       per-player means (centered on mode mean)            P-last − P1   stdev mean
+  A: max(0.4, 1 − K·0.05)       P1:-0.71%  P2:-0.69%  P3:-0.65%  P4:-0.52%  P5:-0.08%  P6:+2.64%     3.38%      0.581
+  B: 1 − (K/Kmax)·0.30          P1:-1.02%  P2:-0.88%  P3:-0.70%  P4:-0.62%  P5:+0.09%  P6:+3.13%     4.19%      0.653
+  C: 1 − (K/Kmax)·0.40          P1:-0.89%  P2:-0.87%  P3:-0.67%  P4:-0.57%  P5:+0.05%  P6:+2.96%     3.89%      0.622
+  D: max(0.3, 1 − K·0.07)       P1:-0.61%  P2:-0.61%  P3:-0.60%  P4:-0.61%  P5:-0.15%  P6:+2.56%     3.19%      0.567
+  E: 1 − (K/Kmax)·0.25          P1:-1.10%  P2:-0.94%  P3:-0.74%  P4:-0.58%  P5:+0.14%  P6:+3.21%     4.36%      0.664
+  GREEDY (reference)            P1:+0.06%  P2:-0.18%  P3:-0.01%  P4:-0.00%  P5:+0.04%  P6:+0.09%     0.03%      0.415
+
+ [32m✓[39m tests/stress-discount-tuning.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 137138[2mms[22m[39m
+   [33m[2m✓[22m[39m discount tuning[2m > [22mcompare survival-discount strategies [33m137137[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m   Start at [22m 15:39:47
+[2m   Duration [22m 137.57s[2m (transform 102ms, setup 0ms, collect 112ms, tests 137.14s, environment 0ms, prepare 105ms)[22m
+
