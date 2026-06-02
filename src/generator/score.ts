@@ -23,10 +23,32 @@ export interface ScoredMap {
   pairs: ResourcePair[];
   pipSpatial: PipSpatial;
   /** Archetype counts among the top-20 highest-value spots. The metric
-   *  guards against monocultural maps where every top corner pushes the
-   *  same strategy — a "balanced" board that's actually 18/20 city rush
-   *  forces every player into the same plan and kills strategic variety. */
+   *  is for UI display only — shows the composition of top-by-total
+   *  spots. The strategic-diversity gate uses viableArchetypeCounts
+   *  instead because port-economy spots structurally can't reach top-20
+   *  (coastal spots have only 1-2 hexes, capped pip production). */
   archetypeMix: Record<Archetype, number>;
+  /** Board-wide count of spots STRUCTURALLY eligible for each archetype,
+   *  using simple binary predicates (no quality thresholds). Multi-label:
+   *  a single spot can contribute to multiple archetypes' counts. Drives
+   *  the strategic-diversity gate (≥3 archetypes with ≥k=5 eligible
+   *  spots). Replaces the prior top-20 + dominant-archetype check, which
+   *  rendered port-economy invisible. */
+  viableArchetypeCounts: Record<Archetype, number>;
+  /** Diagnostic-only: top port-economy openings on this board ranked by
+   *  multi-dim strength (port hinterland support + matching-resource
+   *  production + surplus-pressure). NOT consulted by the strategic-
+   *  diversity gate — exposed for distributional UI reporting per the
+   *  tiered-intent model: eligibility is structural, strength is
+   *  observable, gating is separate from valuation. */
+  portEconomyOpenings: Array<{
+    intersectionId: string;
+    strength: number;
+    portStrength: number;
+    production: number;
+    surplus: number;
+    rank: number; // rank in spot.total ordering, for visibility context
+  }>;
   ports: PortSupport[];
   /** Max/min support across SPECIFIC-resource ports (excludes generic).
    *  Captures hidden bias: 9 sheep tiles around the sheep port vs 6
@@ -258,7 +280,27 @@ function pip(hex: Hex): number {
   return hex.number !== null ? PIP_VALUE[hex.number] : 0;
 }
 
-export function scoreMap(hexes: Hex[], ports: Port[], playerCount: PlayerCount): ScoredMap {
+/** Tunable weights for the scarcityBonus components. Pip-yield scarcity is
+ *  the principled signal (rare production = real strategic scarcity); the
+ *  tile-count term was a category error since the tile bag is fixed by the
+ *  rulebook, not by scarcity, and it amplified a small structural advantage
+ *  for 3-tile resources (brick, ore) into ~50% top-spot dominance. Removing
+ *  it via the full-regeneration validation reduced brick+ore dominance to
+ *  ~37% with zero regression on acceptance rate, fairness, or attempts. */
+export interface ScarcityConfig {
+  /** Multiplier on (maxTiles − tiles). Default 0 (off — was 0.5 historically). */
+  tileWeight: number;
+  /** Multiplier on (maxPips − pips). Default 0.10. */
+  pipWeight: number;
+}
+export const DEFAULT_SCARCITY_CONFIG: ScarcityConfig = { tileWeight: 0, pipWeight: 0.10 };
+
+export function scoreMap(
+  hexes: Hex[],
+  ports: Port[],
+  playerCount: PlayerCount,
+  scarcityConfig: ScarcityConfig = DEFAULT_SCARCITY_CONFIG,
+): ScoredMap {
   const graph = buildIntersectionGraph(hexes);
   const hexById = new Map(hexes.map(h => [h.id, h] as const));
 
@@ -309,6 +351,7 @@ export function scoreMap(hexes: Hex[], ports: Port[], playerCount: PlayerCount):
       scoreSpot(
         inter, hexById, portByIntersection.get(inter.id),
         tilesPerResource, maxTiles, pipsPerResource, maxPips, pairsByKey,
+        scarcityConfig,
       ),
     );
   }
@@ -388,8 +431,94 @@ export function scoreMap(hexes: Hex[], ports: Port[], playerCount: PlayerCount):
   const pipSpatial = computePipSpatial(hexes);
   const archetypeMix = topNArchetypeMix(spots, 20);
 
+  // Board-wide viable counts per archetype. Multi-label aggregation —
+  // a spot eligible for both expansion and balanced contributes to both.
+  const viableArchetypeCounts: Record<Archetype, number> = {
+    expansion: 0, cityRush: 0, portEconomy: 0, devCards: 0, balanced: 0,
+  };
+  for (const s of spots.values()) {
+    for (const a of s.eligibleArchetypes) viableArchetypeCounts[a]++;
+  }
+
+  // Diagnostic-only: port-economy openings ranked by multi-dim strength.
+  // Used purely for UI display; NOT consulted by the diversity gate.
+  // Strength formula: portStrength × 0.4 + production × 1.2
+  //                   + (clamp(surplus, 0.5, 2.0) − 1.0) × 3
+  // where production = matching-resource pip sum for specific ports, or
+  // total adjacent producing pip sum for generic ports; surplus = the
+  // resource's productionShare / expectedShare (clamp prevents extreme
+  // health-status maps from dominating).
+  // portByIntersection already exists from the scoreSpot pass; rebuild
+  // here to keep this block self-contained for the diagnostic surface.
+  const portByIntersectionForDiag = new Map<string, { type: string; resource?: ProducingResource }>();
+  for (const p of ports) {
+    const idA = graph.byHexCorner.get(`${p.hexId}:${p.side}`);
+    const idB = graph.byHexCorner.get(`${p.hexId}:${(p.side + 1) % 6}`);
+    const meta = { type: p.type, resource: p.type === 'generic' ? undefined : (p.type as ProducingResource) };
+    if (idA) portByIntersectionForDiag.set(idA, meta);
+    if (idB) portByIntersectionForDiag.set(idB, meta);
+  }
+  const supportByIntersection = new Map<string, number>();
+  for (const ps of portSupports) {
+    for (const id of ps.intersectionIds) {
+      supportByIntersection.set(id, Math.max(supportByIntersection.get(id) ?? 0, ps.supportScore));
+    }
+  }
+  const shareRatio: Record<ProducingResource, number> = { wood: 1, brick: 1, wheat: 1, sheep: 1, ore: 1 };
+  for (const h of health) {
+    shareRatio[h.resource] = h.expectedShare > 0 ? h.productionShare / h.expectedShare : 1;
+  }
+  const sortedSpots = Array.from(spots.values()).sort((a, b) => b.total - a.total);
+  const rankOf = new Map<string, number>();
+  sortedSpots.forEach((s, idx) => rankOf.set(s.intersectionId, idx));
+
+  const portEconomyOpenings: ScoredMap['portEconomyOpenings'] = [];
+  for (const s of spots.values()) {
+    if (!s.eligibleArchetypes.includes('portEconomy')) continue;
+    const inter = graph.intersections.get(s.intersectionId);
+    if (!inter) continue;
+    const portMeta = portByIntersectionForDiag.get(s.intersectionId);
+    if (!portMeta) continue;
+
+    let production = 0;
+    let surplus = 1;
+    const adjResources = new Set<ProducingResource>();
+    const pipByResource = new Map<ProducingResource, number>();
+    for (const hexId of inter.hexIds) {
+      const hex = hexById.get(hexId);
+      if (!hex || hex.resource === 'desert' || hex.number === null) continue;
+      const r = hex.resource as ProducingResource;
+      adjResources.add(r);
+      pipByResource.set(r, (pipByResource.get(r) ?? 0) + (PIP_VALUE[hex.number] ?? 0));
+    }
+    if (portMeta.resource) {
+      production = pipByResource.get(portMeta.resource as ProducingResource) ?? 0;
+      surplus = shareRatio[portMeta.resource as ProducingResource];
+    } else {
+      // generic port — production = total adjacent producing pips;
+      // surplus = mean across adjacent resources
+      for (const v of pipByResource.values()) production += v;
+      const ss = Array.from(adjResources).map(r => shareRatio[r]);
+      surplus = ss.length > 0 ? ss.reduce((a, b) => a + b, 0) / ss.length : 1;
+    }
+    const portStrength = supportByIntersection.get(s.intersectionId) ?? 0;
+    const surplusFactor = Math.max(0.5, Math.min(2.0, surplus));
+    const strength = portStrength * 0.4 + production * 1.2 + (surplusFactor - 1.0) * 3;
+    portEconomyOpenings.push({
+      intersectionId: s.intersectionId,
+      strength,
+      portStrength,
+      production,
+      surplus,
+      rank: rankOf.get(s.intersectionId) ?? -1,
+    });
+  }
+  portEconomyOpenings.sort((a, b) => b.strength - a.strength);
+
   return {
     graph, spots, health, pairs, pipSpatial, archetypeMix,
+    viableArchetypeCounts,
+    portEconomyOpenings,
     ports: portSupports,
     specificPortSupportRatio,
     playerPortDistance: portDist.byPlayer,
@@ -412,17 +541,30 @@ function topNArchetypeMix(
   return mix;
 }
 
-/** True if the board's top-20 spots span at least 3 distinct strategic
- *  archetypes with ≥3 spots each. Catches the failure mode the user
- *  flagged: a "balanced" board where every top corner happens to be
- *  ore+wheat, forcing every player into city-rush. The threshold is
- *  intentionally lenient — 3-of-5 archetypes with at least 3 spots —
- *  so unusual but still playable maps aren't rejected for being a
- *  little narrow. */
-export function hasStrategicDiversity(spots: Map<string, SpotScore>): boolean {
-  const mix = topNArchetypeMix(spots, 20);
-  const archetypesWithCoverage = Object.values(mix).filter(c => c >= 3).length;
-  return archetypesWithCoverage >= 3;
+/** True if the board structurally supports at least 3 distinct strategic
+ *  archetypes with ≥k=5 viable (eligibility-passing) spots each.
+ *
+ *  This gate uses board-wide multi-label eligibility counts rather than
+ *  top-20 dominant-archetype counts. The prior top-20 check was
+ *  observationally broken for port-economy: coastal spots have 1-2 hexes
+ *  vs 3 for inland spots, so port-economy spots structurally couldn't
+ *  reach top-20 by total — at pc=6 the average top-20 portEconomy count
+ *  was 0.10, effectively zero. This filter unconditionally excluded
+ *  port-economy from the diversity signal regardless of how many
+ *  perfectly-good port openings the board actually offered.
+ *
+ *  k=5 is a fixed design parameter chosen from the empirical knee in the
+ *  per-archetype viability curve (pass rate transitions ~85% → ~69% at
+ *  k=5-6 in the calibrated diagnostic). Not derived from a percentile
+ *  rule — it's a stable structural-existence bar.
+ *
+ *  Quality thresholds are NOT applied here on purpose. Per the tiered-
+ *  intent model: eligibility is structural, quality is observable, the
+ *  gate stays separate from valuation. */
+export function hasStrategicDiversity(scored: ScoredMap): boolean {
+  const k = 5;
+  const archetypesMeetingBar = Object.values(scored.viableArchetypeCounts).filter(c => c >= k).length;
+  return archetypesMeetingBar >= 3;
 }
 
 /** Classify a spot's strategic archetype. Each archetype is scored by a
@@ -498,6 +640,7 @@ function scoreSpot(
   pipsPerResource: Map<ProducingResource, number>,
   maxPips: number,
   pairsByKey: Map<string, ResourcePair>,
+  scarcityConfig: ScarcityConfig,
 ): SpotScore {
   const adjHexes = inter.hexIds.map(id => hexById.get(id)!).filter(Boolean);
   const pipValue = adjHexes.reduce((s, h) => s + pip(h), 0);
@@ -519,23 +662,28 @@ function scoreSpot(
     if (!numberToResources.has(h.number)) numberToResources.set(h.number, new Set());
     numberToResources.get(h.number)!.add(h.resource as ProducingResource);
   }
+  // Elite shared-number combos: a single number on BOTH a brick+wood (road
+  // combo) or ore+wheat (city combo) corner means every roll of that number
+  // delivers a full payout pair. These bonuses are dormant under the default
+  // constraints (noSameNumberAdjacent + noSameNumberOnResource forbid the
+  // shared-number setup, so both fire at 0% of all spots) but kept as
+  // forward-compatible elite signals: if a future config relaxes those
+  // constraints, shared-number corners genuinely ARE more valuable in real
+  // play and should rank higher. Cost is zero under current defaults.
+  //
+  // hasSettlementCombo (all 4 of brick+wood+wheat+sheep at one intersection)
+  // was removed 2026-06: an intersection touches at most 3 hexes, so 4 unique
+  // producing resources at one corner is mathematically impossible.
   let hasRoadCombo = false;
   let hasCityCombo = false;
   for (const set of numberToResources.values()) {
     if (set.has('brick') && set.has('wood')) hasRoadCombo = true;
     if (set.has('ore') && set.has('wheat')) hasCityCombo = true;
   }
-  const allSettlementResources =
-    uniqueResources.has('brick') &&
-    uniqueResources.has('wood') &&
-    uniqueResources.has('wheat') &&
-    uniqueResources.has('sheep');
-  const hasSettlementCombo = allSettlementResources;
 
   let synergyBonus = 0;
   if (hasRoadCombo) synergyBonus += 1.5;
   if (hasCityCombo) synergyBonus += 1.5;
-  if (hasSettlementCombo) synergyBonus += 0.5;
 
   // Road potential: just having brick AND wood adjacent (any numbers) enables
   // an early road, the snake-draft expansion lever. Smaller than the shared-
@@ -543,6 +691,17 @@ function scoreSpot(
   // intersection so spots with split numbers still get partial credit.
   const roadPotentialBonus =
     uniqueResources.has('brick') && uniqueResources.has('wood') ? 0.8 : 0;
+
+  // City potential: symmetric counterpart to roadPotentialBonus — ore + wheat
+  // adjacency enables the city-upgrade lever once second settlement is placed.
+  // Weight is 0.4 (half of road's 0.8), tuned via re-score sweep 2026-06:
+  // strict +0.8 symmetry overcorrected and flipped cityRush ahead of expansion
+  // as the dominant top-1 archetype (45% vs 39% at pc=4). +0.4 raises
+  // cityRush top-1 share from 19% → 33% (pc=4) and 14% → 27% (pc=6) while
+  // keeping expansion clearly the most common apex (47% / 61%). Corrects the
+  // ore+wheat-side asymmetry without introducing a new dominant pattern.
+  const cityPotentialBonus =
+    uniqueResources.has('ore') && uniqueResources.has('wheat') ? 0.4 : 0;
 
   // Starting-hand bonus: per Catan rules the SECOND settlement generates one
   // resource card per adjacent producing hex on placement. Modeled here as a
@@ -599,20 +758,23 @@ function scoreSpot(
   // components, summed:
   //   • Tile-count scarcity: (maxTiles − tiles) × 0.5 — fewer hexes of this
   //     resource exist, fewer corners to compete for.
-  //   • Pip-yield scarcity:  (maxPips  − pips ) × 0.06 — even if tile count
-  //     is fine, if those tiles roll rarely the resource is hard to come by.
-  // Both signals reinforce the "this resource is sought-after" effect — if
-  // a map has one wheat-rich and four wheat-starved resources, spots on the
-  // starved ones get extra pull.
+  //   • Pip-yield scarcity:  (maxPips  − pips ) × pipWeight — even if tile
+  //     count is fine, if those tiles roll rarely the resource is hard to
+  //     come by; this is the only term active in the current default config.
+  // The tile-count term defaulted to 0 after the regeneration validation:
+  // the box-rule tile bag is fixed (not "scarce" in any strategic sense),
+  // and the term amplified a small structural pip advantage for 3-tile
+  // resources into ~50% top-spot dominance. Removing it cut brick+ore
+  // dominance to ~37% with no regression on acceptance / fairness / speed.
   let scarcityBonus = 0;
   for (const resource of uniqueResources) {
     const tiles = tilesPerResource.get(resource as ProducingResource) ?? 0;
     const pips = pipsPerResource.get(resource as ProducingResource) ?? 0;
     if (tiles > 0 && maxTiles > tiles) {
-      scarcityBonus += (maxTiles - tiles) * 0.5;
+      scarcityBonus += (maxTiles - tiles) * scarcityConfig.tileWeight;
     }
     if (pips > 0 && maxPips > pips) {
-      scarcityBonus += (maxPips - pips) * 0.06;
+      scarcityBonus += (maxPips - pips) * scarcityConfig.pipWeight;
     }
   }
 
@@ -623,6 +785,7 @@ function scoreSpot(
     synergyBonus +
     scarcityBonus +
     roadPotentialBonus +
+    cityPotentialBonus +
     startingHandBonus +
     pairScarcityBonus +
     sameNumberPenalty;
@@ -638,6 +801,24 @@ function scoreSpot(
   }
   const archetype = classifyArchetype(pipByResource, port);
 
+  // Structural eligibility per archetype — purely binary predicates, no
+  // quality threshold. A spot can be eligible for multiple archetypes
+  // (a brick+wood+wheat corner counts for both expansion AND balanced).
+  // Quality scoring belongs to the diagnostic UI surface, not the gate.
+  const has = (r: ProducingResource) => (pipByResource.get(r) ?? 0) > 0;
+  const distinct = pipByResource.size;
+  const eligibleArchetypes: Archetype[] = [];
+  if (has('brick') && has('wood')) eligibleArchetypes.push('expansion');
+  if (has('ore') && has('wheat')) eligibleArchetypes.push('cityRush');
+  if (has('sheep') && (has('wheat') || has('ore'))) eligibleArchetypes.push('devCards');
+  // Port-economy eligibility: spot is on a port AND at least one
+  // producing hex is adjacent. The producing-hex condition is implicit
+  // when port is present (port intersections always touch the producing
+  // hex behind the port edge), but we still gate on `distinct > 0` for
+  // safety.
+  if (port && distinct > 0) eligibleArchetypes.push('portEconomy');
+  if (distinct >= 3) eligibleArchetypes.push('balanced');
+
   return {
     intersectionId: inter.id,
     pipValue,
@@ -647,14 +828,15 @@ function scoreSpot(
     scarcityBonus,
     expansionBonus: 0, // filled in by the expansion-potential pass in scoreMap
     roadPotentialBonus,
+    cityPotentialBonus,
     startingHandBonus,
     pairScarcityBonus,
     sameNumberPenalty,
     total,
     hasRoadCombo,
     hasCityCombo,
-    hasSettlementCombo,
     archetype,
+    eligibleArchetypes,
   };
 }
 
@@ -749,7 +931,44 @@ function simulateSnakeDraft(
       chosen = bestSpot;
       value = bestVal;
     } else {
-      // R1: pair-value evaluation.
+      // R1: pair-value evaluation with SURVIVAL-DISCOUNTED planning.
+      //
+      // The planner anticipates a R2 pick when choosing R1, but the planned
+      // B is more likely to survive when fewer picks happen between now
+      // and the player's R2 turn. Snake order makes this asymmetric:
+      //   • P-last R1 → R2 is the very next pick. K = 0 → discount = 1.0.
+      //     Their plan executes; the full pair value matters.
+      //   • P1 R1 → R2 is 2N−2 picks away. K is large → discount is small.
+      //     Their planned B is almost certainly stolen, so they should pick
+      //     A as a robust standalone rather than half of a fragile plan.
+      //
+      // Without this discount the planner gave every player the same
+      // optimistic "I'll get my planned B" expectation, which artificially
+      // inflated P-last's edge. Survival discounting puts the planner
+      // between optimistic and greedy: forward-looking but uncertainty-aware.
+      //
+      // Calibration (baseline stabilization of R1 behavior):
+      //   floor = 0.20  slope = 0.10
+      //
+      // Counter-intuitively, WIDER discount spans compress P-last bias more
+      // than narrower ones. A lower P1 discount means P1 picks A primarily
+      // on standalone value, which protects them when B gets stolen — the
+      // structural cause of the bias. This was validated via 600-map
+      // controlled-seed regen (A vs F vs sensitivity variants):
+      //
+      //   pc        P-last advantage     ΔvsA      P1 mean      ΔvsA
+      //   3         1.36%                −0.04pp   27.542       ≈0
+      //   4         2.01%                −0.03pp   26.127       ≈0
+      //   5         2.00%                −0.56pp   27.314       +0.057
+      //   6         2.83%                −0.52pp   26.449       +0.013
+      //
+      // pc=4 has a small tail-risk regression (P1 p5 −0.010, bottom-5%
+      // mean −0.069 pip) accepted as the cost of pc=5/6 compression.
+      // Sensitivity: slope is the load-bearing parameter (0.08 weak,
+      // 0.12 hurts pc=4 tail). Floor in [0.20, 0.25] is equivalent.
+      const picksUntilR2 = 2 * playerCount - 2 * step - 2;
+      const planningDiscount = Math.max(0.20, 1 - picksUntilR2 * 0.10);
+
       const topA = available
         .slice()
         .sort((a, b) => firstPickValue(b) - firstPickValue(a))
@@ -776,7 +995,7 @@ function simulateSnakeDraft(
         }
         if (bestB === -Infinity) continue;
 
-        const pair = firstPickValue(A) + bestB;
+        const pair = firstPickValue(A) + bestB * planningDiscount;
         if (pair > bestPair) {
           bestPair = pair;
           bestA = A;

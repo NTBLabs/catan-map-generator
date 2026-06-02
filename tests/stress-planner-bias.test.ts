@@ -1,16 +1,6 @@
-/** Diagnostic: is the P-last advantage a structural property of snake-draft
- *  on Catan board topology, or an artifact of the smart pair-evaluation
- *  planner I added? Run two simulators against the same scored maps:
- *
- *    Mode A — current planner (firstPickValue + pair eval at R1, total +
- *             diversification at R2)
- *    Mode B — naive greedy (every turn picks the highest spot.total
- *             remaining, no special R1/R2 treatment, no diversification)
- *
- *  Compare per-player avg totals across both modes. If both show similar
- *  P-last bias → it's a real property of how the snake order distributes
- *  picks on this topology. If only A shows it → my planner is amplifying.
- */
+/** Re-run of the planner-bias diagnostic, now against the survival-discounted
+ *  planner. Goal: confirm P-last advantage compresses toward a middle ground
+ *  between greedy (~0%) and optimistic-pair (~3.5% at 6p). */
 import { describe, it } from 'vitest';
 import { generateMap } from '../src/generator/generate';
 import { scoreMap } from '../src/generator/score';
@@ -30,10 +20,6 @@ function v(): Variants {
   };
 }
 
-/** Naive greedy snake-draft. Each turn picks the highest spot.total still
- *  available, blocks the chosen spot + its 1-edge neighbors (distance-2
- *  rule). No diversification, no pair eval, no first/second pick distinction.
- *  Returns per-player totals using the spot.total of each player's two picks. */
 function simulateGreedy(
   spots: Map<string, SpotScore>,
   graph: ReturnType<typeof scoreMap>['graph'],
@@ -76,9 +62,7 @@ describe('planner bias diagnostic', () => {
           map = generateMap({ playerCount: pc, variants: v() }).map;
         } catch { continue; }
         const scored = scoreMap(map.hexes, map.ports, pc);
-        // Mode A = the totals scoreMap already produced via simulateSnakeDraft
         const totalsA = scored.fairness.playerTotals;
-        // Mode B = re-simulate greedy on the same spots
         const totalsB = simulateGreedy(scored.spots, scored.graph, pc);
         for (let j = 0; j < pc; j++) { sumA[j] += totalsA[j]; sumB[j] += totalsB[j]; }
         succeeded++;
@@ -91,8 +75,6 @@ describe('planner bias diagnostic', () => {
       const overallA = meanA.reduce((a, b) => a + b, 0) / pc;
       const overallB = meanB.reduce((a, b) => a + b, 0) / pc;
 
-      // Center each mode on its own mean so player counts at different
-      // overall scales are still comparable.
       console.log('\n  Per-player avg total, centered on mode mean:');
       console.log('  player    Mode A (planner)        Mode B (greedy)        Δ(A-B)');
       for (let j = 0; j < pc; j++) {
