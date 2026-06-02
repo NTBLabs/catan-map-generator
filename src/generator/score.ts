@@ -662,23 +662,28 @@ function scoreSpot(
     if (!numberToResources.has(h.number)) numberToResources.set(h.number, new Set());
     numberToResources.get(h.number)!.add(h.resource as ProducingResource);
   }
+  // Elite shared-number combos: a single number on BOTH a brick+wood (road
+  // combo) or ore+wheat (city combo) corner means every roll of that number
+  // delivers a full payout pair. These bonuses are dormant under the default
+  // constraints (noSameNumberAdjacent + noSameNumberOnResource forbid the
+  // shared-number setup, so both fire at 0% of all spots) but kept as
+  // forward-compatible elite signals: if a future config relaxes those
+  // constraints, shared-number corners genuinely ARE more valuable in real
+  // play and should rank higher. Cost is zero under current defaults.
+  //
+  // hasSettlementCombo (all 4 of brick+wood+wheat+sheep at one intersection)
+  // was removed 2026-06: an intersection touches at most 3 hexes, so 4 unique
+  // producing resources at one corner is mathematically impossible.
   let hasRoadCombo = false;
   let hasCityCombo = false;
   for (const set of numberToResources.values()) {
     if (set.has('brick') && set.has('wood')) hasRoadCombo = true;
     if (set.has('ore') && set.has('wheat')) hasCityCombo = true;
   }
-  const allSettlementResources =
-    uniqueResources.has('brick') &&
-    uniqueResources.has('wood') &&
-    uniqueResources.has('wheat') &&
-    uniqueResources.has('sheep');
-  const hasSettlementCombo = allSettlementResources;
 
   let synergyBonus = 0;
   if (hasRoadCombo) synergyBonus += 1.5;
   if (hasCityCombo) synergyBonus += 1.5;
-  if (hasSettlementCombo) synergyBonus += 0.5;
 
   // Road potential: just having brick AND wood adjacent (any numbers) enables
   // an early road, the snake-draft expansion lever. Smaller than the shared-
@@ -686,6 +691,17 @@ function scoreSpot(
   // intersection so spots with split numbers still get partial credit.
   const roadPotentialBonus =
     uniqueResources.has('brick') && uniqueResources.has('wood') ? 0.8 : 0;
+
+  // City potential: symmetric counterpart to roadPotentialBonus — ore + wheat
+  // adjacency enables the city-upgrade lever once second settlement is placed.
+  // Weight is 0.4 (half of road's 0.8), tuned via re-score sweep 2026-06:
+  // strict +0.8 symmetry overcorrected and flipped cityRush ahead of expansion
+  // as the dominant top-1 archetype (45% vs 39% at pc=4). +0.4 raises
+  // cityRush top-1 share from 19% → 33% (pc=4) and 14% → 27% (pc=6) while
+  // keeping expansion clearly the most common apex (47% / 61%). Corrects the
+  // ore+wheat-side asymmetry without introducing a new dominant pattern.
+  const cityPotentialBonus =
+    uniqueResources.has('ore') && uniqueResources.has('wheat') ? 0.4 : 0;
 
   // Starting-hand bonus: per Catan rules the SECOND settlement generates one
   // resource card per adjacent producing hex on placement. Modeled here as a
@@ -769,6 +785,7 @@ function scoreSpot(
     synergyBonus +
     scarcityBonus +
     roadPotentialBonus +
+    cityPotentialBonus +
     startingHandBonus +
     pairScarcityBonus +
     sameNumberPenalty;
@@ -811,13 +828,13 @@ function scoreSpot(
     scarcityBonus,
     expansionBonus: 0, // filled in by the expansion-potential pass in scoreMap
     roadPotentialBonus,
+    cityPotentialBonus,
     startingHandBonus,
     pairScarcityBonus,
     sameNumberPenalty,
     total,
     hasRoadCombo,
     hasCityCombo,
-    hasSettlementCombo,
     archetype,
     eligibleArchetypes,
   };

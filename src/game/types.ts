@@ -79,6 +79,11 @@ export interface SpotScore {
    *  early road, which is the snake-draft expansion lever. Distinct from the
    *  shared-number "road combo" inside synergyBonus. */
   roadPotentialBonus: number;
+  /** Symmetric counterpart to roadPotentialBonus — ore + wheat adjacent (any
+   *  numbers) enables the city-upgrade lever. Half the weight of the road
+   *  bonus (+0.4 vs +0.8); strict +0.8 symmetry overcorrected and flipped
+   *  cityRush ahead of expansion as the dominant top-1 archetype. */
+  cityPotentialBonus: number;
   /** Bonus for the resource cards generated when this spot is placed as the
    *  second settlement (one card per adjacent producing hex per Catan rules).
    *  Models the early-game speed-run plan: get cards on placement → road →
@@ -93,7 +98,6 @@ export interface SpotScore {
   total: number;
   hasRoadCombo: boolean;
   hasCityCombo: boolean;
-  hasSettlementCombo: boolean;
   /** Strategic archetype this spot best fits — see Archetype. Single
    *  dominant label, used in the top-20 archetypeMix UI display. */
   archetype: Archetype;
