@@ -1,0 +1,169 @@
+﻿
+[1m[7m[36m RUN [39m[27m[22m [36mv2.1.9 [39m[90mD:/Personal Projects/Catan Map Generator[39m
+
+[90mstdout[2m | tests/stress-synergy-investigation.test.ts[2m > [22m[2msynergy investigation[2m > [22m[2mquantify dormancy + constraint sensitivity + asymmetry
+[22m[39m
+=========================== pc=4 (n=500) ===========================
+
+  A: defaults (NSNA on, NSNoR on)    (500 maps in 12.8s)
+  All-spots prevalence:
+    hasRoadCombo (br+wo shared #): 0/27000 (0.00%)
+    hasCityCombo (or+wh shared #): 0/27000 (0.00%)
+    brick+wood adjacent (any #):   3534/27000 (13.09%)
+    ore+wheat adjacent (any #):    3476/27000 (12.87%)
+    hasSettlementCombo (all 4):    0/27000 (0.00%)
+    avg synergyBonus over all spots: 0.000
+  Top-20 prevalence (n=10000 spot-slots):
+    hasRoadCombo: 0 (0.00%)
+    hasCityCombo: 0 (0.00%)
+    brick+wood adj: 2874 (28.74%)
+    ore+wheat adj:  2555 (25.55%)
+  Top-1 prevalence (n=500 maps):
+    hasRoadCombo: 0 (0.00%)
+    hasCityCombo: 0 (0.00%)
+    brick+wood adj: 279 (55.80%)
+    ore+wheat adj:  94 (18.80%)
+
+  B: noSameNumberAdjacent OFF    (500 maps in 8.6s)
+  All-spots prevalence:
+    hasRoadCombo (br+wo shared #): 112/27000 (0.41%)
+    hasCityCombo (or+wh shared #): 116/27000 (0.43%)
+    brick+wood adjacent (any #):   3500/27000 (12.96%)
+    ore+wheat adjacent (any #):    3418/27000 (12.66%)
+    hasSettlementCombo (all 4):    0/27000 (0.00%)
+    avg synergyBonus over all spots: 0.013
+  Top-20 prevalence (n=10000 spot-slots):
+    hasRoadCombo: 97 (0.97%)
+    hasCityCombo: 90 (0.90%)
+    brick+wood adj: 2871 (28.71%)
+    ore+wheat adj:  2536 (25.36%)
+  Top-1 prevalence (n=500 maps):
+    hasRoadCombo: 7 (1.40%)
+    hasCityCombo: 1 (0.20%)
+    brick+wood adj: 264 (52.80%)
+    ore+wheat adj:  124 (24.80%)
+
+  C: noSameNumberOnResource OFF    (500 maps in 10.0s)
+  All-spots prevalence:
+    hasRoadCombo (br+wo shared #): 0/27000 (0.00%)
+    hasCityCombo (or+wh shared #): 0/27000 (0.00%)
+    brick+wood adjacent (any #):   3534/27000 (13.09%)
+    ore+wheat adjacent (any #):    3452/27000 (12.79%)
+    hasSettlementCombo (all 4):    0/27000 (0.00%)
+    avg synergyBonus over all spots: 0.000
+  Top-20 prevalence (n=10000 spot-slots):
+    hasRoadCombo: 0 (0.00%)
+    hasCityCombo: 0 (0.00%)
+    brick+wood adj: 2856 (28.56%)
+    ore+wheat adj:  2546 (25.46%)
+  Top-1 prevalence (n=500 maps):
+    hasRoadCombo: 0 (0.00%)
+    hasCityCombo: 0 (0.00%)
+    brick+wood adj: 278 (55.60%)
+    ore+wheat adj:  121 (24.20%)
+
+  D: BOTH constraints OFF    (500 maps in 9.0s)
+  All-spots prevalence:
+    hasRoadCombo (br+wo shared #): 102/27000 (0.38%)
+    hasCityCombo (or+wh shared #): 136/27000 (0.50%)
+    brick+wood adjacent (any #):   3486/27000 (12.91%)
+    ore+wheat adjacent (any #):    3516/27000 (13.02%)
+    hasSettlementCombo (all 4):    0/27000 (0.00%)
+    avg synergyBonus over all spots: 0.013
+  Top-20 prevalence (n=10000 spot-slots):
+    hasRoadCombo: 89 (0.89%)
+    hasCityCombo: 94 (0.94%)
+    brick+wood adj: 2856 (28.56%)
+    ore+wheat adj:  2641 (26.41%)
+  Top-1 prevalence (n=500 maps):
+    hasRoadCombo: 9 (1.80%)
+    hasCityCombo: 0 (0.00%)
+    brick+wood adj: 287 (57.40%)
+    ore+wheat adj:  105 (21.00%)
+
+=========================== pc=6 (n=500) ===========================
+
+  A: defaults (NSNA on, NSNoR on)    (500 maps in 57.1s)
+  All-spots prevalence:
+    hasRoadCombo (br+wo shared #): 0/40000 (0.00%)
+    hasCityCombo (or+wh shared #): 0/40000 (0.00%)
+    brick+wood adjacent (any #):   5810/40000 (14.52%)
+    ore+wheat adjacent (any #):    5934/40000 (14.84%)
+    hasSettlementCombo (all 4):    0/40000 (0.00%)
+    avg synergyBonus over all spots: 0.000
+  Top-20 prevalence (n=10000 spot-slots):
+    hasRoadCombo: 0 (0.00%)
+    hasCityCombo: 0 (0.00%)
+    brick+wood adj: 3487 (34.87%)
+    ore+wheat adj:  2709 (27.09%)
+  Top-1 prevalence (n=500 maps):
+    hasRoadCombo: 0 (0.00%)
+    hasCityCombo: 0 (0.00%)
+    brick+wood adj: 361 (72.20%)
+    ore+wheat adj:  62 (12.40%)
+
+  B: noSameNumberAdjacent OFF    (500 maps in 32.0s)
+  All-spots prevalence:
+    hasRoadCombo (br+wo shared #): 282/40000 (0.70%)
+    hasCityCombo (or+wh shared #): 290/40000 (0.73%)
+    brick+wood adjacent (any #):   5854/40000 (14.64%)
+    ore+wheat adjacent (any #):    5872/40000 (14.68%)
+    hasSettlementCombo (all 4):    0/40000 (0.00%)
+    avg synergyBonus over all spots: 0.021
+  Top-20 prevalence (n=10000 spot-slots):
+    hasRoadCombo: 124 (1.24%)
+    hasCityCombo: 122 (1.22%)
+    brick+wood adj: 3428 (34.28%)
+    ore+wheat adj:  2735 (27.35%)
+  Top-1 prevalence (n=500 maps):
+    hasRoadCombo: 14 (2.80%)
+    hasCityCombo: 3 (0.60%)
+    brick+wood adj: 375 (75.00%)
+    ore+wheat adj:  56 (11.20%)
+
+  C: noSameNumberOnResource OFF    (500 maps in 30.2s)
+  All-spots prevalence:
+    hasRoadCombo (br+wo shared #): 0/40000 (0.00%)
+    hasCityCombo (or+wh shared #): 0/40000 (0.00%)
+    brick+wood adjacent (any #):   5860/40000 (14.65%)
+    ore+wheat adjacent (any #):    5864/40000 (14.66%)
+    hasSettlementCombo (all 4):    0/40000 (0.00%)
+    avg synergyBonus over all spots: 0.000
+  Top-20 prevalence (n=10000 spot-slots):
+    hasRoadCombo: 0 (0.00%)
+    hasCityCombo: 0 (0.00%)
+    brick+wood adj: 3444 (34.44%)
+    ore+wheat adj:  2778 (27.78%)
+  Top-1 prevalence (n=500 maps):
+    hasRoadCombo: 0 (0.00%)
+    hasCityCombo: 0 (0.00%)
+    brick+wood adj: 372 (74.40%)
+    ore+wheat adj:  54 (10.80%)
+
+  D: BOTH constraints OFF    (500 maps in 23.1s)
+  All-spots prevalence:
+    hasRoadCombo (br+wo shared #): 302/40000 (0.76%)
+    hasCityCombo (or+wh shared #): 280/40000 (0.70%)
+    brick+wood adjacent (any #):   5844/40000 (14.61%)
+    ore+wheat adjacent (any #):    5906/40000 (14.77%)
+    hasSettlementCombo (all 4):    0/40000 (0.00%)
+    avg synergyBonus over all spots: 0.022
+  Top-20 prevalence (n=10000 spot-slots):
+    hasRoadCombo: 168 (1.68%)
+    hasCityCombo: 107 (1.07%)
+    brick+wood adj: 3466 (34.66%)
+    ore+wheat adj:  2776 (27.76%)
+  Top-1 prevalence (n=500 maps):
+    hasRoadCombo: 19 (3.80%)
+    hasCityCombo: 0 (0.00%)
+    brick+wood adj: 373 (74.60%)
+    ore+wheat adj:  61 (12.20%)
+
+ [32m✓[39m tests/stress-synergy-investigation.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 182825[2mms[22m[39m
+   [33m[2m✓[22m[39m synergy investigation[2m > [22mquantify dormancy + constraint sensitivity + asymmetry [33m182824[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m   Start at [22m 20:59:12
+[2m   Duration [22m 183.38s[2m (transform 91ms, setup 0ms, collect 108ms, tests 182.82s, environment 0ms, prepare 236ms)[22m
+
