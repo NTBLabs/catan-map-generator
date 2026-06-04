@@ -1,9 +1,9 @@
 import { useGesture } from '@use-gesture/react';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useAppStore } from '../state/store';
-import { axialToPixel, hexCorner } from '../game/coords';
+import { axialToPixel, hexCorner, neighbors } from '../game/coords';
 import { PIP_VALUE, RED_NUMBERS } from '../game/constants';
-import type { Hex, Port } from '../game/types';
+import type { Hex, Port, PortType } from '../game/types';
 import { PortGlyph, TileArt } from './TileIcon';
 
 function hexPath(hex: Hex): string {
@@ -121,7 +121,7 @@ function perimeterEdgesCW(hexes: Hex[]): PerimeterEdge[] {
 // The expansion's L/R sides naturally look more spacious than top/bottom
 // because the land's middle row is wider than its top/bottom rows — this is
 // a property of the land shape, not the frame.
-const FRAME_MARGIN = 1.15;
+const FRAME_MARGIN = 1.38;
 
 /** Regular flat-top hex frame circumscribing the land, sized so every land
  *  corner has at least `margin` clearance to the frame boundary at the
@@ -364,25 +364,42 @@ export function Board() {
     return () => ro.disconnect();
   }, []);
 
-  const { viewBox, boardCx, boardCy, viewBoxR } = useMemo(() => {
-    if (!map) return { viewBox: '-6 -6 12 12', boardCx: 0, boardCy: 0, viewBoxR: 6 };
+  const { viewBox, boardCx, boardCy, viewBoxR, frameR } = useMemo(() => {
+    if (!map) return { viewBox: '-6 -6 12 12', boardCx: 0, boardCy: 0, viewBoxR: 6, frameR: 6 };
     // Square viewBox centered on the board, sized to contain the water frame
     // (regular hex circumradius R) plus any port docks that reach beyond it
     // on coastal sides. (cx, cy) is also returned so the rotation transform
     // below can pivot around the BOARD's bbox center — for the 5-6 expansion
     // the staggered rows shift the land off (0,0). viewBoxR (= R) is used by
     // the gesture math to convert pixel deltas to SVG user units.
-    const { cx, cy, landR, R: frameR } = regularHexFrame(map.hexes, FRAME_MARGIN);
-    const portReach = 1.5;
+    const { cx, cy, landR, R: hexFrameR } = regularHexFrame(map.hexes, FRAME_MARGIN);
+    const portReach = 2.0;
     const stroke = 0.3;
-    const R = Math.max(frameR, landR + portReach) + stroke;
+    const R = Math.max(hexFrameR, landR + portReach) + stroke;
     return {
       viewBox: `${(cx - R).toFixed(2)} ${(cy - R).toFixed(2)} ${(2 * R).toFixed(2)} ${(2 * R).toFixed(2)}`,
       boardCx: cx,
       boardCy: cy,
       viewBoxR: R,
+      frameR: hexFrameR,
     };
   }, [map]);
+
+  // Land-corner anchors of the puzzle-piece frame seams ("water breaks"). Each
+  // seam runs radially out from one of these corners to the frame border, so a
+  // dock starting at the same corner must steer off it. Only relevant when the
+  // water frame (and thus the seams) is shown.
+  const seamCorners = useMemo(() => {
+    if (!map || !waterFrame) return [] as Array<{ x: number; y: number }>;
+    const specs = map.playerCount <= 4 ? BREAK_LAND_CORNERS_BASE : BREAK_LAND_CORNERS_EXPANSION;
+    const byKey = new Map(map.hexes.map(hx => [`${hx.q},${hx.r}`, hx] as const));
+    const pts: Array<{ x: number; y: number }> = [];
+    for (const s of specs) {
+      const hx = byKey.get(`${s.q},${s.r}`);
+      if (hx) pts.push(hexCorner(hx, s.corner));
+    }
+    return pts;
+  }, [map, waterFrame]);
 
   // Pixels-per-user-unit at the current container size. preserveAspectRatio
   // "xMidYMid meet" fits the viewBox to the SMALLER dimension of the container,
@@ -751,7 +768,16 @@ export function Board() {
 
           {/* Ports */}
           {map.ports.map((p, idx) => (
-            <PortMark key={`p-${idx}`} port={p} hexes={map.hexes} rotation={rotation} />
+            <PortMark
+              key={`p-${idx}`}
+              port={p}
+              hexes={map.hexes}
+              rotation={rotation}
+              boardCx={boardCx}
+              boardCy={boardCy}
+              frameR={frameR}
+              seamCorners={seamCorners}
+            />
           ))}
 
           {showBestLocations && topNRanked.length > 0 && (
@@ -953,107 +979,266 @@ function FrameCorners({ hexes, margin, rotation }: { hexes: Hex[]; margin: numbe
   return <>{elems}</>;
 }
 
-function PortMark({ port, hexes, rotation }: { port: Port; hexes: Hex[]; rotation: number }) {
+function PortMark({
+  port, hexes, rotation, boardCx, boardCy, frameR, seamCorners,
+}: {
+  port: Port; hexes: Hex[]; rotation: number;
+  boardCx: number; boardCy: number; frameR: number;
+  seamCorners: Array<{ x: number; y: number }>;
+}) {
   const hex = hexes.find(h => h.id === port.hexId);
   if (!hex) return null;
   const a = hexCorner(hex, port.side);
   const b = hexCorner(hex, (port.side + 1) % 6);
+  // A dock whose corner anchors a frame seam ("water break") must steer toward
+  // the midpoint instead of radially out, or it lands right on the seam line.
+  const onSeam = (corner: { x: number; y: number }) =>
+    seamCorners.some(s => Math.hypot(s.x - corner.x, s.y - corner.y) < 0.12);
+  const aOnSeam = onSeam(a);
+  const bOnSeam = onSeam(b);
   const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
   const center = axialToPixel({ q: hex.q, r: hex.r });
-  const dx = mid.x - center.x;
-  const dy = mid.y - center.y;
-  const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-  // Outward unit vector (perpendicular to the coastal edge, pointing to sea)
-  const ux = dx / dist;
-  const uy = dy / dist;
-  // Perpendicular along the edge (used to widen the planking)
-  const px = -uy;
-  const py = ux;
 
-  const dockLen = 0.65;
-  const dockHalfWidth = 0.22;
-  const baseA = { x: mid.x + px * dockHalfWidth, y: mid.y + py * dockHalfWidth };
-  const baseB = { x: mid.x - px * dockHalfWidth, y: mid.y - py * dockHalfWidth };
-  const endMid = { x: mid.x + ux * dockLen, y: mid.y + uy * dockLen };
-  const endA = { x: endMid.x + px * dockHalfWidth, y: endMid.y + py * dockHalfWidth };
-  const endB = { x: endMid.x - px * dockHalfWidth, y: endMid.y - py * dockHalfWidth };
+  // Per-hex outward normal — straight out from the coastal edge into the sea.
+  // Using this (not the board-radial) keeps the docks pointing naturally
+  // seaward instead of skewing sideways.
+  const nx = mid.x - center.x;
+  const ny = mid.y - center.y;
+  const nLen = Math.sqrt(nx * nx + ny * ny) || 1;
+  const ux = nx / nLen;
+  const uy = ny / nLen;
 
-  const plankPath = `M ${baseA.x.toFixed(3)},${baseA.y.toFixed(3)} L ${endA.x.toFixed(3)},${endA.y.toFixed(3)} L ${endB.x.toFixed(3)},${endB.y.toFixed(3)} L ${baseB.x.toFixed(3)},${baseB.y.toFixed(3)} Z`;
+  // Edge direction (corner a -> corner b) for offsetting each dock's inner edge.
+  const ex = b.x - a.x;
+  const ey = b.y - a.y;
+  const eLen = Math.sqrt(ex * ex + ey * ey) || 1;
+  const eux = ex / eLen;
+  const euy = ey / eLen;
 
-  // Three transverse plank lines across the dock surface
-  const plankLines = [0.25, 0.5, 0.75].map(t => {
-    const ax = baseA.x + (endA.x - baseA.x) * t;
-    const ay = baseA.y + (endA.y - baseA.y) * t;
-    const bx = baseB.x + (endB.x - baseB.x) * t;
-    const by = baseB.y + (endB.y - baseB.y) * t;
-    return { ax, ay, bx, by, t };
-  });
+  // The ship floats straight out from the edge midpoint, well clear of the
+  // docks. Start it generously out in the water, then pull it in ONLY if it
+  // would otherwise poke past the frame hexagon (so it never hangs off the map
+  // nor crowds a neighbour's tokens).
+  const SHIP_REACH = 0.47; // worst-case ship extent from its (centered) anchor
+  const sector = Math.PI / 3;
+  const apothem = (frameR * Math.sqrt(3)) / 2;
+  let shipDist = 1.13;
+  for (let i = 0; i < 16; i++) {
+    const px = mid.x + ux * shipDist - boardCx;
+    const py = mid.y + uy * shipDist - boardCy;
+    const pd = Math.sqrt(px * px + py * py);
+    let theta = Math.atan2(py, px);
+    while (theta < 0) theta += 2 * Math.PI;
+    const sectorMid = Math.floor(theta / sector) * sector + sector / 2;
+    const boundaryDist = apothem / Math.cos(theta - sectorMid);
+    if (pd + SHIP_REACH <= boundaryDist || shipDist <= 0.72) break;
+    shipDist -= 0.05;
+  }
+  const shipCx = mid.x + ux * shipDist;
+  const shipCy = mid.y + uy * shipDist;
 
-  // Platform at the seaward end where the resource sign sits
-  const platformCx = mid.x + ux * (dockLen + 0.18);
-  const platformCy = mid.y + uy * (dockLen + 0.18);
+  // Two plank docks — one anchored at each coastal corner, offset inward toward
+  // the edge midpoint, angling out toward the open water.
+  // Sizes (~8% under the original — a bit bigger than the previous pass).
+  const dockWidth = 0.21; // span along the coast (plank width)
+  // Per-port length variance (deterministic from the port position, so it varies
+  // generation-to-generation but never flickers on re-render): ±10%.
+  const lenSeed = Math.sin(mid.x * 45.13 + mid.y * 9.71) * 9123.4;
+  const dockLen = 0.53 * (0.9 + 0.2 * (lenSeed - Math.floor(lenSeed))); // reach out to sea
+  const dockBaseOffset = 0.065; // start the dock just off the coastline
+  const plankLen = 0.081; // fixed visual plank length (anchored from the tip)
+  const pilingSpacing = 0.171; // fixed log spacing (anchored from the tip)
 
-  const label = port.type === 'generic' ? '3:1' : '2:1';
+  // Is the edge bordering a given corner LAND (a hex sits across it) or open
+  // water? A dock at a land-backed corner must lean inward enough to clear that
+  // land/border; a corner facing open water may run nearly straight — and that
+  // difference is where the safe angle variety comes from.
+  const EDGE_TO_NEIGHBOR = [1, 0, 5, 4, 3, 2];
+  const nbrs = neighbors(hex);
+  const hexKeys = new Set(hexes.map(hx => `${hx.q},${hx.r}`));
+  const edgeIsLand = (edgeSide: number) => {
+    const nb = nbrs[EDGE_TO_NEIGHBOR[((edgeSide % 6) + 6) % 6]];
+    return hexKeys.has(`${nb.q},${nb.r}`);
+  };
+  // Corner a (= corner `side`) borders edge side-1; corner b (corner side+1)
+  // borders edge side+1.
+  const aClosed = edgeIsLand(port.side - 1);
+  const bClosed = edgeIsLand(port.side + 1);
+
+  // Per-edge variance (deterministic: edge angle + per-port spatial hash, so two
+  // neighbouring ports never match). Stable across re-renders (just geometry).
+  const edgeAngle = Math.atan2(uy, ux);
+  const h = Math.sin(mid.x * 12.9898 + mid.y * 78.233) * 43758.5453;
+  const jitter = (h - Math.floor(h)) * Math.PI * 2; // unique 0..2π phase per port
+  const dockWobble = Math.sin(edgeAngle * 2.3 + jitter) * 0.2; // shared tilt
+  const dockSplay = Math.sin(edgeAngle * 3.7 + jitter * 1.5) * 0.14; // asymmetry
+
+  // Each dock leans toward the ship (i.e. toward the edge midpoint) — `de` is the
+  // along-coast component of its heading, derived from the direction to the ship,
+  // so both docks angle inward like a real harbour. Converging that way also
+  // pulls a dock off its corner's coast/seam. A land-backed corner gets a bit
+  // more inset; a seam corner steers a touch harder to clear the radial break.
+  // The mutual cap below then trims the lean only as much as needed to keep the
+  // two docks' logs apart, so they stay as inward as space allows.
+  const cornerDir = (corner: { x: number; y: number }, closed: boolean, sign: number, seam: boolean) => {
+    const sdx = shipCx - corner.x;
+    const sdy = shipCy - corner.y;
+    const sl = Math.sqrt(sdx * sdx + sdy * sdy) || 1;
+    let de = (sdx / sl) * eux + (sdy / sl) * euy; // lean toward the ship/midpoint
+    let inset = closed ? 0.1 : 0.05;
+    if (seam) {
+      inset = 0.13;
+      de += 0.12 * sign; // steer harder off the radial seam line
+    }
+    return { de, inset };
+  };
+  const aSet = cornerDir(a, aClosed, 1, aOnSeam);
+  const bSet = cornerDir(b, bClosed, -1, bOnSeam);
+  // Add the per-port/per-dock variance, then keep within a sane cone.
+  const clampDe = (de: number) => Math.max(-0.5, Math.min(0.5, de));
+  let deA = clampDe(aSet.de + (dockWobble + dockSplay) * 0.6);
+  let deB = clampDe(bSet.de + (dockWobble - dockSplay) * 0.6);
+  // The ONLY coupling between the two docks: if both happen to lean toward the
+  // midpoint (deA>0 and deB<0), pull them back just enough to keep their inner
+  // tips/pilings apart. Docks that fan apart (the usual case) are never touched,
+  // so each keeps its own independent angle.
+  const convA = Math.max(0, deA);
+  const convB = Math.max(0, -deB);
+  const innerGap = 1 - aSet.inset - bSet.inset - 2 * dockWidth;
+  const mutualCap = Math.max(0, (innerGap - 0.17) / dockLen);
+  if (convA + convB > mutualCap) {
+    const excess = convA + convB - mutualCap;
+    const tot = convA + convB || 1;
+    deA -= excess * (convA / tot);
+    deB += excess * (convB / tot);
+  }
+
+  function makeDock(corner: { x: number; y: number }, sign: number, de: number, inset: number) {
+    // Foot nudged inward along the coast toward the midpoint, off the corner.
+    const footX = corner.x + eux * inset * sign;
+    const footY = corner.y + euy * inset * sign;
+    // Inner base point, offset further along the edge toward the midpoint.
+    const inner = { x: footX + eux * dockWidth * sign, y: footY + euy * dockWidth * sign };
+    // de is the along-coast heading; du keeps the dock pointing out to sea.
+    const du = Math.sqrt(Math.max(0.0001, 1 - de * de));
+    const tux = de * eux + du * ux;
+    const tuy = de * euy + du * uy;
+    // Push the whole dock out off the coastline so it sits in the water.
+    const cBase = { x: footX + tux * dockBaseOffset, y: footY + tuy * dockBaseOffset };
+    const iBase = { x: inner.x + tux * dockBaseOffset, y: inner.y + tuy * dockBaseOffset };
+    const cOut = { x: cBase.x + tux * dockLen, y: cBase.y + tuy * dockLen };
+    const iOut = { x: iBase.x + tux * dockLen, y: iBase.y + tuy * dockLen };
+    const path =
+      `M ${cBase.x.toFixed(3)},${cBase.y.toFixed(3)} L ${iBase.x.toFixed(3)},${iBase.y.toFixed(3)}` +
+      ` L ${iOut.x.toFixed(3)},${iOut.y.toFixed(3)} L ${cOut.x.toFixed(3)},${cOut.y.toFixed(3)} Z`;
+    // Plank seams are spaced a fixed length back from the seaward tip, so the
+    // leftover (a half plank) lands at the foot and the planking is unchanged.
+    const pt = (t: number, edge: { x: number; y: number }) => ({
+      x: edge.x + tux * dockLen * t,
+      y: edge.y + tuy * dockLen * t,
+    });
+    const nSeams = Math.max(1, Math.floor(dockLen / plankLen - 0.05));
+    const planks = Array.from({ length: nSeams }, (_, i) => {
+      const t = 1 - ((i + 1) * plankLen) / dockLen;
+      const a = pt(t, cBase);
+      const b = pt(t, iBase);
+      return { ax: a.x, ay: a.y, bx: b.x, by: b.y };
+    });
+    // Support pilings (log cross-sections) down both edges — three pairs anchored
+    // from the seaward tip at a fixed spacing, so trimming the foot leaves their
+    // spacing/alignment untouched.
+    const pilings = [0, 1, 2].flatMap(m => {
+      const t = 1 - (m * pilingSpacing) / dockLen;
+      return [pt(t, cBase), pt(t, iBase)];
+    });
+    return { path, planks, pilings };
+  }
+  const docks = [makeDock(a, 1, deA, aSet.inset), makeDock(b, -1, deB, bSet.inset)];
 
   return (
     <g>
-      {/* Tethering ropes from the hex coast corners to the platform */}
-      <line className="port-rope" x1={a.x} y1={a.y} x2={platformCx} y2={platformCy} />
-      <line className="port-rope" x1={b.x} y1={b.y} x2={platformCx} y2={platformCy} />
-
-      {/* Dock planking */}
-      <path d={plankPath} fill="#9c6a32" stroke="#3a2510" strokeWidth={0.018} />
-      {plankLines.map((p, i) => (
-        <line
-          key={i}
-          x1={p.ax}
-          y1={p.ay}
-          x2={p.bx}
-          y2={p.by}
-          stroke="#5d3a18"
-          strokeWidth={0.018}
-        />
-      ))}
-      {/* Posts at the dock's seaward corners */}
-      <circle cx={endA.x} cy={endA.y} r={0.045} fill="#5d3a18" stroke="#2a1808" strokeWidth={0.015} />
-      <circle cx={endB.x} cy={endB.y} r={0.045} fill="#5d3a18" stroke="#2a1808" strokeWidth={0.015} />
-
-      {/* Resource sign / chip sitting at the end of the dock */}
-      <circle
-        cx={platformCx}
-        cy={platformCy}
-        r={0.32}
-        fill={port.type === 'generic' ? '#f4e4bc' : `url(#grad-${port.type})`}
-        stroke="#3a2916"
-        strokeWidth={0.025}
-      />
-      <circle
-        cx={platformCx}
-        cy={platformCy}
-        r={0.27}
-        fill="none"
-        stroke="#9c7a3d"
-        strokeWidth={0.012}
-        opacity={0.7}
-      />
-      {/* Glyph + ratio ribbon counter-rotate around the platform so they
-          stay readable for the viewer regardless of board rotation. */}
-      <g transform={`translate(${platformCx} ${platformCy}) rotate(${-rotation})`}>
-        <g transform="translate(0 -0.04)">
-          <PortGlyph type={port.type} size={0.85} />
+      {/* Two plank docks, angled in toward the ship */}
+      {docks.map((d, di) => (
+        <g key={di}>
+          <path d={d.path} fill="#9c6a32" stroke="#3a2510" strokeWidth={0.017} />
+          {d.planks.map((p, i) => (
+            <line key={i} x1={p.ax} y1={p.ay} x2={p.bx} y2={p.by} stroke="#5d3a18" strokeWidth={0.015} />
+          ))}
+          {/* Support pilings — drawn as log cross-sections (a wood-toned disc
+              with a darker heartwood centre) so they read correctly top-down. */}
+          {d.pilings.map((p, i) => (
+            <g key={i}>
+              <circle cx={p.x} cy={p.y} r={0.039} fill="#7a4e23" stroke="#2a1808" strokeWidth={0.013} />
+              <circle cx={p.x} cy={p.y} r={0.016} fill="none" stroke="#4a2d12" strokeWidth={0.009} />
+            </g>
+          ))}
         </g>
-        <rect
-          x={-0.16} y={0.20} width={0.32} height={0.16} rx={0.04}
-          fill="#f4e4bc" stroke="#5d462a" strokeWidth={0.018}
-        />
-        <text
-          x={0} y={0.285} dy={0.046}
-          textAnchor="middle"
-          fontSize={0.13} fontWeight={900} fill="#5d462a"
-        >
-          {label}
-        </text>
+      ))}
+
+      {/* Ship counter-rotates so its mast/flag stay upright for the viewer
+          regardless of board rotation. */}
+      <g transform={`translate(${shipCx} ${shipCy}) rotate(${-rotation})`}>
+        <PortShip type={port.type} />
       </g>
+    </g>
+  );
+}
+
+// A little merchant ship rendered upright in local coordinates, with its bbox
+// balanced around the origin (flag above, hull below) so the anchor sits at the
+// ship's centre — this keeps its reach symmetric and small, so a ship is far
+// less likely to swing its flag over a neighbouring number token. The flag
+// carries the resource icon over the trade ratio, all on the one flag.
+function PortShip({ type }: { type: PortType }) {
+  const isGeneric = type === 'generic';
+  const flagFill = isGeneric ? '#f4e4bc' : `url(#grad-${type})`;
+  const label = isGeneric ? '3:1' : '2:1';
+  return (
+    <g>
+      {/* Mast — runs the full height; a stretch of it shows bare between the
+          sail and the (lowered) hull. */}
+      <line x1={0} y1={0.18} x2={0} y2={-0.35} stroke="#5d3a18" strokeWidth={0.03} strokeLinecap="round" />
+
+      {/* Sail — a billowing curve as if filled by wind (straight luff on the
+          mast, bulging leech, bowed head and foot), kept balanced about the mast
+          so its contents sit centred. It carries the resource icon over the
+          trade ratio. For 2:1 ports the ratio sits on a parchment label that
+          reads against the coloured sail; the 3:1 (generic) sail is already
+          parchment, so the box would be a redundant outline — drop it and
+          enlarge the text. */}
+      <path
+        d="M -0.17,-0.28 Q 0,-0.33 0.13,-0.26 C 0.22,-0.15 0.22,-0.01 0.13,0.08 Q 0,0.12 -0.17,0.08 Z"
+        fill={flagFill} stroke="#3a2916" strokeWidth={0.02} strokeLinejoin="round"
+      />
+      {isGeneric ? (
+        <>
+          <g transform="translate(0 -0.14)">
+            <PortGlyph type={type} size={0.62} />
+          </g>
+          <text x={0} y={0.0} dy={0.058} textAnchor="middle"
+                fontSize={0.14} fontWeight={900} fill="#4a3415">{label}</text>
+        </>
+      ) : (
+        <>
+          <g transform="translate(0 -0.12)">
+            <PortGlyph type={type} size={0.6} />
+          </g>
+          {/* The label is allowed to bleed slightly past the sail edge — reads
+              fine and keeps the ratio nice and legible. */}
+          <rect x={-0.17} y={0.02} width={0.34} height={0.13} rx={0.03}
+                fill="#f4e4bc" stroke="#5d462a" strokeWidth={0.017} />
+          <text x={0} y={0.085} dy={0.042} textAnchor="middle"
+                fontSize={0.12} fontWeight={900} fill="#4a3415">{label}</text>
+        </>
+      )}
+
+      {/* Hull — shorter top-to-bottom, lowered so a length of bare mast (pole)
+          shows above it. */}
+      <rect x={-0.24} y={0.18} width={0.48} height={0.05} rx={0.02}
+            fill="#a9743a" stroke="#3a2510" strokeWidth={0.02} />
+      <path d="M -0.24,0.225 L 0.24,0.225 L 0.17,0.37 Q 0,0.42 -0.17,0.37 Z"
+            fill="#8a5a2b" stroke="#3a2510" strokeWidth={0.022} />
+      <path d="M -0.19,0.28 Q 0,0.33 0.19,0.28" fill="none" stroke="#5d3a18" strokeWidth={0.015} />
     </g>
   );
 }
