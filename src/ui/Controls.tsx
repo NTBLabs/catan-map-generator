@@ -38,6 +38,7 @@ export function Controls() {
   const variants = useAppStore(s => s.variants);
   const showBestLocations = useAppStore(s => s.showBestLocations);
   const showResourceHealth = useAppStore(s => s.showResourceHealth);
+  const showAdvancedDiagnostics = useAppStore(s => s.showAdvancedDiagnostics);
   const waterFrame = useAppStore(s => s.waterFrame);
   const map = useAppStore(s => s.map);
   const scored = useAppStore(s => s.scored);
@@ -50,6 +51,7 @@ export function Controls() {
   const setChallenge = useAppStore(s => s.setChallenge);
   const toggleShowBestLocations = useAppStore(s => s.toggleShowBestLocations);
   const toggleShowResourceHealth = useAppStore(s => s.toggleShowResourceHealth);
+  const toggleShowAdvancedDiagnostics = useAppStore(s => s.toggleShowAdvancedDiagnostics);
   const toggleWaterFrame = useAppStore(s => s.toggleWaterFrame);
   const generate = useAppStore(s => s.generate);
 
@@ -214,9 +216,9 @@ export function Controls() {
           </label>
         </div>
         <p className="help">
-          Adds a per-resource health readout (pip totals, concentration, healthy/warning/unhealthy dot) plus the simulated snake-draft fairness panel.
+          Per-resource health readout (pip totals, concentration, healthy/warning/unhealthy dot) plus the simulated snake-draft fairness panel.
         </p>
-        {showResourceHealth && scored && <AnalyzePanel />}
+        {showResourceHealth && scored && <ResourceHealthPanel />}
       </div>
 
       <div className="controls__row">
@@ -391,12 +393,28 @@ export function Controls() {
         </p>
       </div>
 
+      <div className="controls__group">
+        <div className="controls__row">
+          <label className="toggle">
+            <input type="checkbox" checked={showAdvancedDiagnostics} onChange={toggleShowAdvancedDiagnostics} />
+            Show advanced diagnostics
+          </label>
+        </div>
+        <p className="help">
+          Deeper analysis: adjacent-resource pair frequencies, strategic-viability bar, top-20 archetype mix, top port-economy openings, and port hinterland support.
+        </p>
+        {showAdvancedDiagnostics && scored && <AdvancedDiagnosticsPanel />}
+      </div>
+
       </div>
     </aside>
   );
 }
 
-function AnalyzePanel() {
+/** Top row (per-resource pip totals + health dots) plus the bottom
+ *  fairness panel (stdev/spread/mean/player bars). Gated by the
+ *  "Show resource distribution" toggle. */
+function ResourceHealthPanel() {
   const scored = useAppStore(s => s.scored)!;
   const fairness = scored.fairness;
   const mean = fairness.playerTotals.reduce((a, b) => a + b, 0) / fairness.playerTotals.length;
@@ -406,15 +424,13 @@ function AnalyzePanel() {
     <>
       <div className="health">
         {scored.health.map(h => {
-          // Production share delta vs. expected (tile-count) share.
-          // 0 → producing exactly its fair share; ±20% → meaningful skew.
           const shareDelta = h.expectedShare > 0
             ? (h.productionShare / h.expectedShare - 1) * 100
             : 0;
           const deltaSign = shareDelta > 0 ? '+' : '';
           return (
             <div className="health__cell" key={h.resource}>
-              <div>
+              <div className="health__cell-head">
                 <span className={`health__dot health__dot--${h.status}`} />
                 {h.resource}
               </div>
@@ -422,10 +438,7 @@ function AnalyzePanel() {
               <div style={{ opacity: 0.7 }} title="concentration on top number">
                 {(h.concentration * 100).toFixed(0)}%
               </div>
-              <div
-                className="health__share"
-                title="production share vs expected (tile-count share)"
-              >
+              <div className="health__share" title="production share vs expected (tile-count share)">
                 {deltaSign}{shareDelta.toFixed(0)}%
               </div>
             </div>
@@ -433,6 +446,60 @@ function AnalyzePanel() {
         })}
       </div>
 
+      <div className="fairness">
+        <div className="fairness__row">
+          <span>Stdev</span>
+          <span>{fairness.stdev.toFixed(2)}</span>
+        </div>
+        <div className="fairness__row">
+          <span>Spread</span>
+          <span>{fairness.spread.toFixed(2)}</span>
+        </div>
+        <div className="fairness__row">
+          <span>Mean</span>
+          <span>{mean.toFixed(2)}</span>
+        </div>
+        <div className="fairness__row" title="Min roads from any picked spot to any port, per player">
+          <span>Port reach</span>
+          <span>
+            {scored.playerPortDistance.map((d, i) =>
+              `P${i + 1}:${Number.isFinite(d) ? d : '∞'}`,
+            ).join(' ')}
+          </span>
+        </div>
+        <div
+          className="fairness__row"
+          title="Spread between highest- and lowest-producing quadrant relative to its tile share. >1.0 = super-continent territory."
+        >
+          <span>Pip spread</span>
+          <span style={{ color: scored.pipSpatial.spread > 1.0 ? '#c0341d' : undefined }}>
+            {scored.pipSpatial.spread.toFixed(2)}
+            <span style={{ marginLeft: 6, opacity: 0.6, fontSize: '0.85em' }}>
+              ({scored.pipSpatial.quadrantRatios.map(r => r.toFixed(2)).join(' ')})
+            </span>
+          </span>
+        </div>
+        <div className="fairness__bars">
+          {fairness.playerTotals.map((v, i) => (
+            <div key={i} className="fairness__bar" style={{ opacity: 0.4 + 0.6 * (v / max) }}>
+              <span className="fairness__bar-label">P{i + 1}: {v.toFixed(1)}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
+
+/** Deeper diagnostic panels — adjacent resource pairs, strategic
+ *  viability gate, top-20 archetype mix, top port-economy openings,
+ *  port hinterland support. Gated by the separate "Show advanced
+ *  diagnostics" toggle so the basic resource distribution view stays
+ *  uncluttered. */
+function AdvancedDiagnosticsPanel() {
+  const scored = useAppStore(s => s.scored)!;
+  return (
+    <>
       <div className="pairs">
         <div className="pairs__title">Adjacent resource pairs (obs / exp)</div>
         <div className="pairs__grid">
@@ -523,14 +590,24 @@ function AnalyzePanel() {
         return (
           <div className="pairs">
             <div className="pairs__title">Top port-economy openings</div>
-            <div style={{ fontSize: 12, opacity: 0.75 }}>
+            <div style={{ fontSize: 12, opacity: 0.85 }}>
               {top.map((p, i) => (
-                <div key={p.intersectionId} style={{ display: 'flex', gap: 8, marginTop: 2 }}>
-                  <span style={{ minWidth: 18, opacity: 0.5 }}>{i + 1}.</span>
-                  <span style={{ minWidth: 76 }}>strength <strong>{p.strength.toFixed(2)}</strong></span>
-                  <span style={{ minWidth: 70 }}>port {p.portStrength.toFixed(1)}</span>
-                  <span style={{ minWidth: 70 }}>prod {p.production.toFixed(1)}</span>
-                  <span style={{ minWidth: 84 }}>surplus {p.surplus.toFixed(2)}×</span>
+                <div
+                  key={p.intersectionId}
+                  style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: '2px 8px',
+                    marginTop: 4,
+                    paddingBottom: 4,
+                    borderBottom: i < top.length - 1 ? '1px dashed rgba(0,0,0,0.08)' : 'none',
+                  }}
+                >
+                  <span style={{ opacity: 0.5, minWidth: 16 }}>{i + 1}.</span>
+                  <span>strength <strong>{p.strength.toFixed(2)}</strong></span>
+                  <span>port {p.portStrength.toFixed(1)}</span>
+                  <span>prod {p.production.toFixed(1)}</span>
+                  <span>surplus {p.surplus.toFixed(2)}×</span>
                   <span style={{ opacity: 0.55 }}>rank #{p.rank + 1}</span>
                 </div>
               ))}
@@ -571,48 +648,6 @@ function AnalyzePanel() {
           </div>
         );
       })()}
-
-      <div className="fairness">
-        <div className="fairness__row">
-          <span>Stdev</span>
-          <span>{fairness.stdev.toFixed(2)}</span>
-        </div>
-        <div className="fairness__row">
-          <span>Spread</span>
-          <span>{fairness.spread.toFixed(2)}</span>
-        </div>
-        <div className="fairness__row">
-          <span>Mean</span>
-          <span>{mean.toFixed(2)}</span>
-        </div>
-        <div className="fairness__row" title="Min roads from any picked spot to any port, per player">
-          <span>Port reach</span>
-          <span>
-            {scored.playerPortDistance.map((d, i) =>
-              `P${i + 1}:${Number.isFinite(d) ? d : '∞'}`,
-            ).join(' ')}
-          </span>
-        </div>
-        <div
-          className="fairness__row"
-          title="Spread between highest- and lowest-producing quadrant relative to its tile share. >1.0 = super-continent territory."
-        >
-          <span>Pip spread</span>
-          <span style={{ color: scored.pipSpatial.spread > 1.0 ? '#c0341d' : undefined }}>
-            {scored.pipSpatial.spread.toFixed(2)}
-            <span style={{ marginLeft: 6, opacity: 0.6, fontSize: '0.85em' }}>
-              ({scored.pipSpatial.quadrantRatios.map(r => r.toFixed(2)).join(' ')})
-            </span>
-          </span>
-        </div>
-        <div className="fairness__bars">
-          {fairness.playerTotals.map((v, i) => (
-            <div key={i} className="fairness__bar" style={{ opacity: 0.4 + 0.6 * (v / max) }}>
-              <span className="fairness__bar-label">P{i + 1}: {v.toFixed(1)}</span>
-            </div>
-          ))}
-        </div>
-      </div>
     </>
   );
 }

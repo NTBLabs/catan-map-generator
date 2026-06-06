@@ -415,7 +415,7 @@
 
 .health {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 6px;
   margin-top: 8px;
 }
@@ -423,10 +423,18 @@
   background: white;
   border: 1px solid var(--catan-brown-mid);
   border-radius: 10px;
-  padding: 6px;
+  padding: 6px 4px;
   text-align: center;
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 600;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.health__cell-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
 }
 .health__dot {
   display: inline-block;
