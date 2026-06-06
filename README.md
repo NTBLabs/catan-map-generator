@@ -14,6 +14,7 @@ Live: <https://nathantbenke.github.io/catan-map-generator/>
   - *Drought* — produces a cluster of three adjacent low-yield hexes you have to plan around.
   - *Random* — picks one of the above at generation time.
 - **Shareable URLs.** The full board state is encoded into the hash, so anyone with the link sees the same map.
+- **Image export / share.** Save the current board as a PNG (with the seed stamped on it), or — on mobile — push it straight to the native share sheet to drop into a group chat.
 - **Annotation overlays.** Toggle a snake-draft top-N pick visualization (rank rings + spot-value scores + city/road synergy markers) and a per-resource health readout (pip totals, concentration percentage, healthy/warning/unhealthy status).
 - **Mobile-first UI.** Bottom drawer drags 1:1 with your finger and snaps to open/closed on release. The board itself supports pinch-zoom and drag-pan, with a hybrid CSS+SVG transform pipeline that stays sharp at rest and stays smooth during gestures.
 

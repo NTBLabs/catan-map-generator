@@ -1,8 +1,20 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useGesture } from '@use-gesture/react';
 import { useAppStore } from '../state/store';
 import { PRODUCING_RESOURCES } from '../game/constants';
 import type { ChallengeFlavor, PlayerCount, ProducingResource } from '../game/types';
+import { shareOrSaveBoard } from './exportImage';
+import {
+  CheckIcon,
+  CloseIcon,
+  DownloadIcon,
+  LinkIcon,
+  MailIcon,
+  ShareIcon,
+  TelegramIcon,
+  WhatsAppIcon,
+} from './icons';
 
 const MOBILE_QUERY = '(max-width: 899px)';
 // Height of the peek (handle) row when the drawer is collapsed. The
@@ -58,6 +70,23 @@ export function Controls() {
   const showTargetPicker =
     variants.challenge.flavor === 'scarcity' || variants.challenge.flavor === 'boomOrBust';
 
+  // Share popover: one icon button opens a small menu with "Copy link" and
+  // "Save / share image". Closes on outside-click, Escape, or shortly after an
+  // action so its inline feedback ("Link copied!", "Saved!") stays visible.
+  const [shareMenuOpen, setShareMenuOpen] = useState(false);
+  // Close on Escape. Outside-tap is handled by the scrim overlay itself (the
+  // menu is portaled to <body> so it escapes the drawer's CSS transform, which
+  // would otherwise anchor a fixed/absolute child to the drawer and push the
+  // popover off-screen).
+  useEffect(() => {
+    if (!shareMenuOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShareMenuOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [shareMenuOpen]);
+
   const [shareStatus, setShareStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
   useEffect(() => {
     if (shareStatus === 'idle') return;
@@ -72,6 +101,79 @@ export function Controls() {
       console.warn('clipboard write failed', err);
       setShareStatus('failed');
     }
+    window.setTimeout(() => setShareMenuOpen(false), 1200);
+  };
+
+  // Image export / native share. On mobile (file-share capable) this opens the
+  // OS share sheet; elsewhere it downloads a PNG. Status mirrors the link-share
+  // button so the user gets feedback either way.
+  const [imageStatus, setImageStatus] = useState<'idle' | 'busy' | 'shared' | 'saved' | 'failed'>('idle');
+  useEffect(() => {
+    if (imageStatus === 'idle' || imageStatus === 'busy') return;
+    const t = window.setTimeout(() => setImageStatus('idle'), 2000);
+    return () => window.clearTimeout(t);
+  }, [imageStatus]);
+  const onSaveImage = async () => {
+    if (imageStatus === 'busy') return;
+    setImageStatus('busy');
+    try {
+      const seed = map?.seed;
+      const result = await shareOrSaveBoard({
+        filename: seed !== undefined ? `catan-map-${seed.toString(36)}.png` : 'catan-map.png',
+        seedLabel: seed !== undefined ? `seed: ${seed.toString(36)}` : undefined,
+      });
+      // null = user cancelled the share sheet; treat as a no-op.
+      setImageStatus(result === 'downloaded' ? 'saved' : result === 'shared' ? 'shared' : 'idle');
+      // Native share takes over the screen, so close immediately; otherwise
+      // leave the menu up briefly so "Saved!" feedback is visible.
+      window.setTimeout(() => setShareMenuOpen(false), result === 'shared' ? 0 : 1200);
+    } catch (err) {
+      console.warn('image export failed', err);
+      setImageStatus('failed');
+      window.setTimeout(() => setShareMenuOpen(false), 1200);
+    }
+  };
+  const imageLabel = imageStatus === 'busy'
+    ? 'Rendering…'
+    : imageStatus === 'shared'
+      ? 'Shared!'
+      : imageStatus === 'saved'
+        ? 'Saved!'
+        : imageStatus === 'failed'
+          ? 'Export failed'
+          : 'Save image';
+
+  // Share data. The native share sheet (below) is the primary path on mobile —
+  // it reaches iMessage, Instagram, Snapchat, Discord, Slack, and iOS's
+  // suggested-chats row, none of which expose a public link-intent URL. The
+  // direct buttons are only for apps that DO publish a share URL (WhatsApp,
+  // Telegram) plus email, and double as the desktop fallback. Built in render
+  // so the URL always reflects the current map.
+  const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
+  const shareTitle = 'Catan map';
+  const shareText = 'Check out this Catan map';
+  const enc = encodeURIComponent;
+  const shareTargets: Array<{
+    key: string; label: string; color: string; href: string; Icon: typeof WhatsAppIcon; blank?: boolean;
+  }> = [
+    { key: 'whatsapp', label: 'WhatsApp', color: '#25D366', Icon: WhatsAppIcon, blank: true,
+      href: `https://wa.me/?text=${enc(`${shareText} ${shareUrl}`)}` },
+    { key: 'telegram', label: 'Telegram', color: '#26A5E4', Icon: TelegramIcon, blank: true,
+      href: `https://t.me/share/url?url=${enc(shareUrl)}&text=${enc(shareText)}` },
+    { key: 'email', label: 'Email', color: '#7e6a52', Icon: MailIcon,
+      href: `mailto:?subject=${enc(shareTitle)}&body=${enc(`${shareText}\n\n${shareUrl}`)}` },
+  ];
+
+  const canNativeShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
+  const onNativeShare = async () => {
+    try {
+      await navigator.share({ title: shareTitle, text: shareText, url: shareUrl });
+    } catch (err) {
+      if (!(err instanceof DOMException && err.name === 'AbortError')) {
+        console.warn('native share failed', err);
+      }
+    }
+    setShareMenuOpen(false);
   };
 
   // Mobile drawer state. On phones the drawer starts closed; the user can
@@ -183,15 +285,111 @@ export function Controls() {
             'Generate map'
           )}
         </button>
-        <button
-          className={`btn btn--secondary ${shareStatus === 'copied' ? 'btn--success' : ''} ${shareStatus === 'failed' ? 'btn--warn' : ''}`}
-          onClick={onShare}
-          disabled={!map}
-          aria-live="polite"
-        >
-          {shareStatus === 'copied' ? 'Link copied!' : shareStatus === 'failed' ? 'Copy failed' : 'Share'}
-        </button>
+        <div className="share">
+          <button
+            type="button"
+            className="btn btn--secondary share__btn"
+            onClick={() => setShareMenuOpen(o => !o)}
+            disabled={!map}
+            aria-haspopup="menu"
+            aria-expanded={shareMenuOpen}
+            aria-label="Share"
+            title="Share"
+          >
+            <ShareIcon />
+          </button>
+        </div>
       </div>
+
+      {shareMenuOpen && map && createPortal(
+        <div
+          className="share-overlay"
+          role="presentation"
+          onClick={() => setShareMenuOpen(false)}
+        >
+          <div
+            className="share-sheet"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Share map"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="share-sheet__header">
+              <span className="share-sheet__title">Share map</span>
+              <button
+                type="button"
+                className="share-sheet__close"
+                onClick={() => setShareMenuOpen(false)}
+                aria-label="Close"
+              >
+                <CloseIcon />
+              </button>
+            </div>
+
+            {canNativeShare && (
+              <button type="button" className="share-hero" onClick={onNativeShare}>
+                <span className="share-hero__icon">
+                  <ShareIcon />
+                </span>
+                <span className="share-hero__text">
+                  <span className="share-hero__title">Share…</span>
+                  <span className="share-hero__sub">Messages, Instagram, Discord, Snapchat &amp; more</span>
+                </span>
+              </button>
+            )}
+
+            <div className="share-targets">
+              {shareTargets.map(t => (
+                <a
+                  key={t.key}
+                  className="share-target"
+                  href={t.href}
+                  {...(t.blank ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                  onClick={() => setShareMenuOpen(false)}
+                >
+                  <span className="share-target__icon" style={{ background: t.color }}>
+                    <t.Icon />
+                  </span>
+                  <span className="share-target__label">{t.label}</span>
+                </a>
+              ))}
+            </div>
+
+            <div className="share-divider" />
+
+            <div className="share-copy">
+              <input
+                className="share-copy__input"
+                value={shareUrl}
+                readOnly
+                onFocus={e => e.currentTarget.select()}
+                aria-label="Map link"
+              />
+              <button
+                type="button"
+                className={`share-copy__btn ${shareStatus === 'copied' ? 'share-copy__btn--done' : ''}`}
+                onClick={onShare}
+                aria-live="polite"
+              >
+                {shareStatus === 'copied' ? <CheckIcon /> : <LinkIcon />}
+                {shareStatus === 'copied' ? 'Copied' : shareStatus === 'failed' ? 'Failed' : 'Copy'}
+              </button>
+            </div>
+
+            <button
+              type="button"
+              className={`share-save ${imageStatus === 'saved' || imageStatus === 'shared' ? 'share-save--done' : ''} ${imageStatus === 'failed' ? 'share-save--warn' : ''}`}
+              onClick={onSaveImage}
+              disabled={imageStatus === 'busy'}
+              aria-live="polite"
+            >
+              {imageStatus === 'busy' ? <span className="spinner" aria-hidden="true" /> : <DownloadIcon />}
+              {imageLabel}
+            </button>
+          </div>
+        </div>,
+        document.body,
+      )}
 
       {fellBack && map && (
         <div className="notice notice--warn">

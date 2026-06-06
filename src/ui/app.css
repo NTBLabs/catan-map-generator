@@ -413,6 +413,259 @@
   transform: translateY(1px);
 }
 
+/* Share control: a single icon button that opens a modal action sheet
+   (copy link / save-share image). */
+.share {
+  display: flex;
+}
+.share__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  width: 48px;
+}
+
+/* Full-screen dimming scrim. Portaled to <body>, so it always covers the
+   viewport regardless of the drawer's CSS transform. Tapping it closes the
+   sheet; it also blocks interaction with everything underneath. */
+.share-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 16px;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  background: rgba(20, 8, 4, 0.5);
+  animation: share-fade 0.15s ease;
+}
+
+/* Action sheet: anchored to the bottom on phones, centered dialog on desktop. */
+.share-sheet {
+  width: 100%;
+  max-width: 460px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  background: var(--catan-cream);
+  border: 2px solid var(--catan-gold);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  animation: share-rise 0.18s ease;
+}
+
+@keyframes share-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes share-rise {
+  from { transform: translateY(12px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.share-sheet__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.share-sheet__title {
+  font-weight: 800;
+  font-size: 1.15rem;
+  color: var(--catan-brown-dark);
+}
+.share-sheet__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--catan-brown-mid);
+  cursor: pointer;
+}
+.share-sheet__close:hover,
+.share-sheet__close:focus-visible {
+  background: rgba(218, 149, 75, 0.25);
+}
+
+/* Hero native-share button — the primary path on mobile. Opens the OS share
+   sheet (iMessage, Instagram, Discord, Snapchat, suggested chats, …). Only
+   rendered where the Web Share API exists. */
+.share-hero {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  text-align: left;
+  background: var(--catan-red-bright);
+  color: var(--catan-cream);
+  border: 2px solid var(--catan-gold);
+  border-radius: var(--radius-button);
+  cursor: pointer;
+}
+.share-hero:hover,
+.share-hero:focus-visible {
+  filter: brightness(1.06);
+}
+.share-hero__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+}
+.share-hero__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.share-hero__title {
+  font-weight: 800;
+  font-size: 1.05rem;
+}
+.share-hero__sub {
+  font-size: 0.78rem;
+  opacity: 0.9;
+}
+
+/* Direct-shortcut grid — circular brand icons with labels for apps that
+   publish a public share-link URL (Twitter/YouTube share-dialog pattern). */
+.share-targets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 8px;
+  justify-content: center;
+}
+.share-target {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 62px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  color: var(--catan-brown-dark);
+}
+.share-target__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  color: #fff;
+  box-shadow: var(--shadow-button);
+  transition: transform 0.12s ease, filter 0.12s ease;
+}
+.share-target:hover .share-target__icon,
+.share-target:focus-visible .share-target__icon {
+  transform: translateY(-2px);
+  filter: brightness(1.08);
+}
+.share-target__label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-align: center;
+  color: var(--catan-brown-dark);
+}
+
+.share-divider {
+  height: 1px;
+  background: rgba(93, 70, 42, 0.18);
+}
+
+/* Copy-link row: read-only URL field + copy button. */
+.share-copy {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+.share-copy__input {
+  flex: 1;
+  min-width: 0;
+  height: 46px;
+  padding: 0 12px;
+  border: 2px solid var(--catan-gold);
+  border-radius: 10px;
+  background: #fffaf0;
+  color: var(--catan-brown-dark);
+  font-size: 0.9rem;
+  font-family: inherit;
+}
+.share-copy__btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 46px;
+  padding: 0 16px;
+  border: 2px solid var(--catan-brown-mid);
+  border-radius: 10px;
+  background: var(--catan-gold);
+  color: var(--catan-brown-dark);
+  font-weight: 800;
+  font-size: 0.95rem;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.share-copy__btn--done {
+  background: #6fa84a;
+  color: var(--catan-cream);
+  border-color: #3d6a26;
+}
+
+/* Image action: full-width outlined button. */
+.share-save {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 50px;
+  border: 2px solid var(--catan-brown-mid);
+  border-radius: var(--radius-button);
+  background: transparent;
+  color: var(--catan-brown-dark);
+  font-weight: 800;
+  font-size: 1rem;
+  cursor: pointer;
+}
+.share-save:hover:not(:disabled),
+.share-save:focus-visible {
+  background: rgba(218, 149, 75, 0.2);
+}
+.share-save:disabled {
+  opacity: 0.75;
+  cursor: default;
+}
+.share-save--done {
+  color: #3d6a26;
+  border-color: #3d6a26;
+}
+.share-save--warn {
+  color: var(--catan-red-bright);
+  border-color: var(--catan-red-bright);
+}
+
+/* On wider screens, float the sheet to the vertical center for a calmer
+   dialog feel rather than a phone-style bottom sheet. */
+@media (min-width: 900px) {
+  .share-overlay {
+    align-items: center;
+  }
+}
+
 .health {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
