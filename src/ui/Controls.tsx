@@ -11,6 +11,8 @@ import {
   DownloadIcon,
   LinkIcon,
   MailIcon,
+  MoreIcon,
+  RedditIcon,
   ShareIcon,
   TelegramIcon,
   WhatsAppIcon,
@@ -133,16 +135,6 @@ export function Controls() {
       window.setTimeout(() => setShareMenuOpen(false), 1200);
     }
   };
-  const imageLabel = imageStatus === 'busy'
-    ? 'Rendering…'
-    : imageStatus === 'shared'
-      ? 'Shared!'
-      : imageStatus === 'saved'
-        ? 'Saved!'
-        : imageStatus === 'failed'
-          ? 'Export failed'
-          : 'Save image';
-
   // Share data. The native share sheet (below) is the primary path on mobile —
   // it reaches iMessage, Instagram, Snapchat, Discord, Slack, and iOS's
   // suggested-chats row, none of which expose a public link-intent URL. The
@@ -154,13 +146,16 @@ export function Controls() {
   const shareText = 'Check out this Catan map';
   const enc = encodeURIComponent;
   const shareTargets: Array<{
-    key: string; label: string; color: string; href: string; Icon: typeof WhatsAppIcon; blank?: boolean;
+    key: string; label: string; href: string; Icon: typeof WhatsAppIcon;
+    color?: string; blank?: boolean; ghost?: boolean; ring?: boolean;
   }> = [
     { key: 'whatsapp', label: 'WhatsApp', color: '#25D366', Icon: WhatsAppIcon, blank: true,
       href: `https://wa.me/?text=${enc(`${shareText} ${shareUrl}`)}` },
     { key: 'telegram', label: 'Telegram', color: '#26A5E4', Icon: TelegramIcon, blank: true,
       href: `https://t.me/share/url?url=${enc(shareUrl)}&text=${enc(shareText)}` },
-    { key: 'email', label: 'Email', color: '#7e6a52', Icon: MailIcon,
+    { key: 'reddit', label: 'Reddit', color: '#FF4500', Icon: RedditIcon, blank: true,
+      href: `https://www.reddit.com/submit?url=${enc(shareUrl)}&title=${enc(shareTitle)}` },
+    { key: 'email', label: 'Email', color: '#2f55c7', Icon: MailIcon, ring: true,
       href: `mailto:?subject=${enc(shareTitle)}&body=${enc(`${shareText}\n\n${shareUrl}`)}` },
   ];
 
@@ -311,11 +306,11 @@ export function Controls() {
             className="share-sheet"
             role="dialog"
             aria-modal="true"
-            aria-label="Share map"
+            aria-label="Share"
             onClick={e => e.stopPropagation()}
           >
             <div className="share-sheet__header">
-              <span className="share-sheet__title">Share map</span>
+              <span className="share-sheet__title">Share</span>
               <button
                 type="button"
                 className="share-sheet__close"
@@ -326,19 +321,24 @@ export function Controls() {
               </button>
             </div>
 
-            {canNativeShare && (
-              <button type="button" className="share-hero" onClick={onNativeShare}>
-                <span className="share-hero__icon">
-                  <ShareIcon />
+            <div className="share-targets">
+              <button
+                type="button"
+                className="share-target"
+                onClick={onShare}
+                aria-live="polite"
+              >
+                <span
+                  className={`share-target__icon${shareStatus === 'copied' ? '' : ' share-target__icon--util'}`}
+                  style={shareStatus === 'copied' ? { background: '#6fa84a', borderColor: '#3d6a26', color: '#fff' } : undefined}
+                >
+                  {shareStatus === 'copied' ? <CheckIcon /> : <LinkIcon />}
                 </span>
-                <span className="share-hero__text">
-                  <span className="share-hero__title">Share…</span>
-                  <span className="share-hero__sub">Messages, Instagram, Discord, Snapchat &amp; more</span>
+                <span className="share-target__label">
+                  {shareStatus === 'copied' ? 'Copied!' : shareStatus === 'failed' ? 'Failed' : 'Copy link'}
                 </span>
               </button>
-            )}
 
-            <div className="share-targets">
               {shareTargets.map(t => (
                 <a
                   key={t.key}
@@ -347,45 +347,51 @@ export function Controls() {
                   {...(t.blank ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
                   onClick={() => setShareMenuOpen(false)}
                 >
-                  <span className="share-target__icon" style={{ background: t.color }}>
+                  <span
+                    className={`share-target__icon${t.ghost ? ' share-target__icon--ghost' : ''}`}
+                    style={t.ghost ? undefined : { background: t.color, ...(t.ring ? { border: '2px solid var(--catan-gold)' } : {}) }}
+                  >
                     <t.Icon />
                   </span>
                   <span className="share-target__label">{t.label}</span>
                 </a>
               ))}
-            </div>
 
-            <div className="share-divider" />
-
-            <div className="share-copy">
-              <input
-                className="share-copy__input"
-                value={shareUrl}
-                readOnly
-                onFocus={e => e.currentTarget.select()}
-                aria-label="Map link"
-              />
               <button
                 type="button"
-                className={`share-copy__btn ${shareStatus === 'copied' ? 'share-copy__btn--done' : ''}`}
-                onClick={onShare}
+                className="share-target"
+                onClick={onSaveImage}
+                disabled={imageStatus === 'busy'}
                 aria-live="polite"
               >
-                {shareStatus === 'copied' ? <CheckIcon /> : <LinkIcon />}
-                {shareStatus === 'copied' ? 'Copied' : shareStatus === 'failed' ? 'Failed' : 'Copy'}
+                <span
+                  className={`share-target__icon${imageStatus === 'saved' || imageStatus === 'shared' ? '' : ' share-target__icon--ghost'}`}
+                  style={imageStatus === 'saved' || imageStatus === 'shared' ? { background: '#6fa84a', borderColor: '#3d6a26', color: '#fff' } : undefined}
+                >
+                  {imageStatus === 'busy'
+                    ? <span className="spinner" aria-hidden="true" />
+                    : imageStatus === 'saved' || imageStatus === 'shared'
+                      ? <CheckIcon />
+                      : <DownloadIcon />}
+                </span>
+                <span className="share-target__label">
+                  {imageStatus === 'busy' ? 'Saving…'
+                    : imageStatus === 'saved' ? 'Saved!'
+                      : imageStatus === 'shared' ? 'Shared!'
+                        : imageStatus === 'failed' ? 'Failed'
+                          : 'Download'}
+                </span>
               </button>
-            </div>
 
-            <button
-              type="button"
-              className={`share-save ${imageStatus === 'saved' || imageStatus === 'shared' ? 'share-save--done' : ''} ${imageStatus === 'failed' ? 'share-save--warn' : ''}`}
-              onClick={onSaveImage}
-              disabled={imageStatus === 'busy'}
-              aria-live="polite"
-            >
-              {imageStatus === 'busy' ? <span className="spinner" aria-hidden="true" /> : <DownloadIcon />}
-              {imageLabel}
-            </button>
+              {canNativeShare && (
+                <button type="button" className="share-target" onClick={onNativeShare}>
+                  <span className="share-target__icon share-target__icon--ghost">
+                    <MoreIcon />
+                  </span>
+                  <span className="share-target__label">More</span>
+                </button>
+              )}
+            </div>
           </div>
         </div>,
         document.body,

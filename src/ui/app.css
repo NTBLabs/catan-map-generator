@@ -445,7 +445,9 @@
 /* Action sheet: anchored to the bottom on phones, centered dialog on desktop. */
 .share-sheet {
   width: 100%;
-  max-width: 460px;
+  /* Sized so the 7 targets wrap to a balanced 4 + 3 grid (rather than 6 + 1):
+     content width ~300px fits exactly 4 bubbles per row, not 5. */
+  max-width: 332px;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -473,7 +475,9 @@
 }
 .share-sheet__title {
   font-weight: 800;
-  font-size: 1.15rem;
+  font-size: 1.2rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   color: var(--catan-brown-dark);
 }
 .share-sheet__close {
@@ -493,52 +497,10 @@
   background: rgba(218, 149, 75, 0.25);
 }
 
-/* Hero native-share button — the primary path on mobile. Opens the OS share
-   sheet (iMessage, Instagram, Discord, Snapchat, suggested chats, …). Only
-   rendered where the Web Share API exists. */
-.share-hero {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  padding: 12px 14px;
-  text-align: left;
-  background: var(--catan-red-bright);
-  color: var(--catan-cream);
-  border: 2px solid var(--catan-gold);
-  border-radius: var(--radius-button);
-  cursor: pointer;
-}
-.share-hero:hover,
-.share-hero:focus-visible {
-  filter: brightness(1.06);
-}
-.share-hero__icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.18);
-}
-.share-hero__text {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-.share-hero__title {
-  font-weight: 800;
-  font-size: 1.05rem;
-}
-.share-hero__sub {
-  font-size: 0.78rem;
-  opacity: 0.9;
-}
-
-/* Direct-shortcut grid — circular brand icons with labels for apps that
-   publish a public share-link URL (Twitter/YouTube share-dialog pattern). */
+/* Target grid — circular icons with labels: direct app shortcuts (WhatsApp,
+   Telegram, Email), a Download bubble, and a "More" bubble that opens the
+   native OS share sheet (iMessage, Instagram, Discord, Snapchat, suggested
+   chats). Twitter/YouTube share-dialog pattern. */
 .share-targets {
   display: flex;
   flex-wrap: wrap;
@@ -569,6 +531,23 @@
   box-shadow: var(--shadow-button);
   transition: transform 0.12s ease, filter 0.12s ease;
 }
+/* Catan red→gold gradient — Copy link. Uses the app's own brand colors so the
+   primary action ties to the theme, while staying distinct from the flat brand
+   circles next to it. */
+.share-target__icon--util {
+  /* Ember: gold glow pooled low, strong red dominating the body (incl. the
+     top-right), deep red at the edges. Keeps Copy distinct from Reddit's flat
+     orange while staying red-forward. */
+  background: radial-gradient(130% 130% at 72% 100%, #e2a44d 0%, #d4441c 42%, #b62e0d 100%);
+}
+/* Ghost treatment — Email, Download, More. Light circle with a gold ring +
+   brown icon (the post-redesign look), giving the bottom row a calm,
+   consistent set distinct from the filled top row. */
+.share-target__icon--ghost {
+  background: #fffaf0;
+  border: 2px solid var(--catan-gold);
+  color: var(--catan-brown-dark);
+}
 .share-target:hover .share-target__icon,
 .share-target:focus-visible .share-target__icon {
   transform: translateY(-2px);
@@ -581,81 +560,9 @@
   color: var(--catan-brown-dark);
 }
 
-.share-divider {
-  height: 1px;
-  background: rgba(93, 70, 42, 0.18);
-}
-
-/* Copy-link row: read-only URL field + copy button. */
-.share-copy {
-  display: flex;
-  gap: 8px;
-  align-items: stretch;
-}
-.share-copy__input {
-  flex: 1;
-  min-width: 0;
-  height: 46px;
-  padding: 0 12px;
-  border: 2px solid var(--catan-gold);
-  border-radius: 10px;
-  background: #fffaf0;
-  color: var(--catan-brown-dark);
-  font-size: 0.9rem;
-  font-family: inherit;
-}
-.share-copy__btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  height: 46px;
-  padding: 0 16px;
-  border: 2px solid var(--catan-brown-mid);
-  border-radius: 10px;
-  background: var(--catan-gold);
-  color: var(--catan-brown-dark);
-  font-weight: 800;
-  font-size: 0.95rem;
-  white-space: nowrap;
-  cursor: pointer;
-}
-.share-copy__btn--done {
-  background: #6fa84a;
-  color: var(--catan-cream);
-  border-color: #3d6a26;
-}
-
-/* Image action: full-width outlined button. */
-.share-save {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  width: 100%;
-  min-height: 50px;
-  border: 2px solid var(--catan-brown-mid);
-  border-radius: var(--radius-button);
-  background: transparent;
-  color: var(--catan-brown-dark);
-  font-weight: 800;
-  font-size: 1rem;
-  cursor: pointer;
-}
-.share-save:hover:not(:disabled),
-.share-save:focus-visible {
-  background: rgba(218, 149, 75, 0.2);
-}
-.share-save:disabled {
+.share-target:disabled {
   opacity: 0.75;
   cursor: default;
-}
-.share-save--done {
-  color: #3d6a26;
-  border-color: #3d6a26;
-}
-.share-save--warn {
-  color: var(--catan-red-bright);
-  border-color: var(--catan-red-bright);
 }
 
 /* On wider screens, float the sheet to the vertical center for a calmer
