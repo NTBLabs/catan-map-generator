@@ -367,12 +367,22 @@ export function randomizeMap(
     placeResources(hexes, resourceBag, rng, false, wealthGapTarget);
   }
 
+  // High-yield spread strategy per scenario:
+  // - Balanced (none): default 'byCount' (or experimental override)
+  // - Rich vs Poor / Hot Zone: 'byRate' — equalize per-tile high-yield rate,
+  //   which inherently biases reds/9s/5s onto the 3-tile resources (brick,
+  //   ore) so they're not proportionally starved. Hot Zone's cluster
+  //   concentrates pip mass on whatever resources sit at the cluster
+  //   coordinates; without spread, the non-cluster 3-tile resources end up
+  //   with no reds AND no high non-reds, failing the per-tile pip floor.
+  // - Scarcity / Boom-or-bust / Drought: 'off' — their identity REQUIRES
+  //   the freedom to starve/concentrate resources arbitrarily.
+  const spreadForScenario =
+    variants.challenge.flavor === 'none' ? (spreadMode ?? 'byCount') :
+    variants.challenge.flavor === 'wealthGap' || variants.challenge.flavor === 'hotZone' ? 'byRate' :
+    'off';
   placeNumbers(hexes, numberBag, rng, {
-    // Only enforce the "spread high-yield across resources" preference in
-    // balanced mode. Challenge mode needs the freedom to produce starved or
-    // concentrated resources naturally. Default mode preserves legacy
-    // behavior (byCount); experiments may override via spreadMode.
-    spreadHighYield: variants.challenge.flavor === 'none' ? (spreadMode ?? 'byCount') : 'off',
+    spreadHighYield: spreadForScenario,
     noSameNumberAdjacent: variants.noSameNumberAdjacent,
     noSameNumberOnResource: variants.noSameNumberOnResource,
     noMultipleRedsOnResource: variants.noMultipleRedsOnResource,
