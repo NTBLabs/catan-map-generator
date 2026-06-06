@@ -1120,6 +1120,33 @@ export function isResourceHealthy(
   return true;
 }
 
+/** Softer resource-health check for "concentrated" scenarios (Hot Zone).
+ *  Drops the relative production-share variance rule and the concentration
+ *  cap — both of which Hot Zone's cluster mechanic fundamentally violates
+ *  by design (the cluster MUST concentrate pip mass on some resources).
+ *  Keeps the absolute starvation floor (pip-per-tile >= 1.7) and the
+ *  "every resource has at least one high-yield" rule so no resource is
+ *  truly dead-on-arrival. Use when a scenario's identity is concentration
+ *  and the strict variance check would always reject. */
+export function isResourceHealthySoft(
+  health: ResourceHealth[],
+  hexes: Hex[],
+): boolean {
+  const tilesByResource = new Map<string, Hex[]>();
+  for (const h of hexes) {
+    if (h.resource === 'desert') continue;
+    if (!tilesByResource.has(h.resource)) tilesByResource.set(h.resource, []);
+    tilesByResource.get(h.resource)!.push(h);
+  }
+  for (const h of health) {
+    const tiles = tilesByResource.get(h.resource) ?? [];
+    if (h.totalPips < Math.ceil(tiles.length * 1.7)) return false;
+    const hasHighYield = tiles.some(t => t.number !== null && HIGH_YIELD_NUMBERS.has(t.number));
+    if (!hasHighYield) return false;
+  }
+  return true;
+}
+
 /** True if the board's pip yield is reasonably distributed across its 4
  *  quadrants — fails when high-yield numbers cluster into a "super
  *  continent" leaving the rest of the map productively dead. Threshold:
