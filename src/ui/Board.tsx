@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useAppStore } from '../state/store';
 import { axialToPixel, hexCorner, neighbors } from '../game/coords';
 import { PIP_VALUE, RED_NUMBERS } from '../game/constants';
+import { findHotZoneCluster, findWealthGapAxis } from '../generator/score';
 import type { Hex, Port, PortType } from '../game/types';
 import { PortGlyph, TileArt } from './TileIcon';
 
@@ -336,6 +337,20 @@ export function Board() {
   // viewRef stores x, y, scale in SVG user units (NOT pixels), so the same
   // numbers map cleanly into both transform spaces. Drag deltas come from
   // useGesture in pixels and are converted via pxPerUnit().
+  // Scenario overlays — visible whenever the rolled flavor is wealthGap or
+  // hotZone, regardless of analyze toggle. The whole point of these scenarios
+  // is being able to SEE the contested region / wealth divide; hiding them
+  // behind a toggle defeats their purpose.
+  const rolledFlavor = map?.variants.challenge.rolledFlavor;
+  const hotZoneCluster = useMemo(() => {
+    if (!map || rolledFlavor !== 'hotZone') return null;
+    return findHotZoneCluster(map.hexes);
+  }, [map, rolledFlavor]);
+  const wealthGapInfo = useMemo(() => {
+    if (!map || rolledFlavor !== 'wealthGap') return null;
+    return findWealthGapAxis(map.hexes);
+  }, [map, rolledFlavor]);
+
   const viewRef = useRef<{ x: number; y: number; scale: number }>({ ...RESET });
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -364,24 +379,38 @@ export function Board() {
     return () => ro.disconnect();
   }, []);
 
-  const { viewBox, boardCx, boardCy, viewBoxR, frameR } = useMemo(() => {
-    if (!map) return { viewBox: '-6 -6 12 12', boardCx: 0, boardCy: 0, viewBoxR: 6, frameR: 6 };
+  const { viewBox, boardCx, boardCy, viewBoxR, frameR, portEndR } = useMemo(() => {
+    if (!map) return { viewBox: '-6 -6 12 12', boardCx: 0, boardCy: 0, viewBoxR: 6, frameR: 6, portEndR: 5 };
     // Square viewBox centered on the board, sized to contain the water frame
     // (regular hex circumradius R) plus any port docks that reach beyond it
     // on coastal sides. (cx, cy) is also returned so the rotation transform
     // below can pivot around the BOARD's bbox center — for the 5-6 expansion
     // the staggered rows shift the land off (0,0). viewBoxR (= R) is used by
     // the gesture math to convert pixel deltas to SVG user units.
+    //
+    // labelReach: when a scenario overlay is active (wealthGap or hotZone),
+    // reserve extra outer band for the RICH/SPARSE/HOT ZONE badges so they
+    // sit past the port reach instead of covering ports. Balanced maps and
+    // other scenarios keep the original tight viewBox.
     const { cx, cy, landR, R: hexFrameR } = regularHexFrame(map.hexes, FRAME_MARGIN);
     const portReach = 2.0;
     const stroke = 0.3;
-    const R = Math.max(hexFrameR, landR + portReach) + stroke;
+    // labelReach extends the viewBox to fit RICH/POOR badges PAST the port
+    // reach (since the user wants those labels off-board for clarity). Only
+    // the wealthGap scenario needs this — hotZone's HOT ZONE label sits IN
+    // the water frame (not past ports), so its viewBox stays the original
+    // tight size and the board doesn't shrink for that scenario.
+    const rolled = map.variants.challenge.rolledFlavor;
+    const labelReach = rolled === 'wealthGap' ? 0.7 : 0;
+    const portEnd = landR + portReach;
+    const R = Math.max(hexFrameR, portEnd + labelReach) + stroke;
     return {
       viewBox: `${(cx - R).toFixed(2)} ${(cy - R).toFixed(2)} ${(2 * R).toFixed(2)} ${(2 * R).toFixed(2)}`,
       boardCx: cx,
       boardCy: cy,
       viewBoxR: R,
       frameR: hexFrameR,
+      portEndR: portEnd,
     };
   }, [map]);
 
@@ -729,6 +758,51 @@ export function Board() {
             />
           ))}
 
+          {/* Scenario overlays — UNDER-TOKEN LAYER.
+              wealthGap dividing line and hotZone cluster outlines render here
+              (between tile fills and resource artwork) so that the number
+              tokens stay on top and remain readable. The text labels for
+              these scenarios render in a SEPARATE pass below the port marks,
+              positioned off-board so they never obscure gameplay. */}
+          {wealthGapInfo && (() => {
+            const T = 9; // line half-length in hex units; covers any board size
+            const SQRT3 = Math.sqrt(3);
+            const lineSpec: Record<'q' | 'r' | 's',
+              { x1: number; y1: number; x2: number; y2: number }> = {
+              q: { x1: -T * 0.5, y1: -T * SQRT3 / 2, x2: T * 0.5, y2: T * SQRT3 / 2 },
+              r: { x1: -T, y1: 0, x2: T, y2: 0 },
+              s: { x1: -T * 0.5, y1: T * SQRT3 / 2, x2: T * 0.5, y2: -T * SQRT3 / 2 },
+            };
+            const { axis } = wealthGapInfo;
+            const spec = lineSpec[axis];
+            return (
+              <g className="scenario-wealthgap-line">
+                <line x1={spec.x1} y1={spec.y1} x2={spec.x2} y2={spec.y2}
+                      stroke="#f4e4bc" strokeWidth={0.22} opacity={0.5} strokeLinecap="round" />
+                <line x1={spec.x1} y1={spec.y1} x2={spec.x2} y2={spec.y2}
+                      stroke="#5d462a" strokeWidth={0.08} strokeDasharray="0.32 0.20"
+                      opacity={0.95} strokeLinecap="round" />
+              </g>
+            );
+          })()}
+
+          {hotZoneCluster && (
+            <g className="scenario-hotzone-borders">
+              {hotZoneCluster.map(hexId => {
+                const h = map.hexes.find(x => x.id === hexId);
+                if (!h) return null;
+                return (
+                  <g key={`hotzone-${hexId}`}>
+                    <path d={hexPath(h)} fill="none" stroke="#d4441c"
+                          strokeWidth={0.18} opacity={0.35} />
+                    <path d={hexPath(h)} fill="none" stroke="#d4441c"
+                          strokeWidth={0.09} strokeDasharray="0.22 0.10" opacity={0.95} />
+                  </g>
+                );
+              })}
+            </g>
+          )}
+
           {/* Resource artwork — fills most of the hex. Each scene counter-rotates
               so the trees / sheep / mountains stay upright as the board spins. */}
           {map.hexes.map(h => {
@@ -780,6 +854,16 @@ export function Board() {
             />
           ))}
 
+          {/* Scenario LABELS — render above tokens but positioned off-board so
+              they never sit over a number token. The dividing line + cluster
+              borders that go WITH these labels are rendered earlier (between
+              tile fills and resource artwork) so number tokens cover them. */}
+          {/* Scenario LABELS are rendered OUTSIDE this rotation group (just
+              before the panZoom group closes) so they always sit at the
+              visual top / perpendicular edges of the rotated cluster +
+              divider, instead of rotating with the board into arbitrary
+              positions. See the labels block below the rotation group. */}
+
           {showBestLocations && topNRanked.length > 0 && (
             <g>
               {Array.from(scored.spots.values()).map(spot => {
@@ -828,6 +912,107 @@ export function Board() {
           )}
 
         </g>
+        {/* Scenario LABELS — rendered OUTSIDE the rotation group so they
+            always sit at the VISUAL top / perpendicular axis of the
+            currently-rotated content. Inside panZoom so they still pan
+            and zoom with the board. Positions are computed in screen
+            (post-rotation) coordinates by applying the current rotation
+            angle to the cluster geometry and dividing-line direction. */}
+        {(hotZoneCluster || wealthGapInfo) && (() => {
+          const rad = (rotation * Math.PI) / 180;
+          const cos = Math.cos(rad);
+          const sin = Math.sin(rad);
+          const rotateAroundBoard = (px: number, py: number) => ({
+            x: boardCx + (px - boardCx) * cos - (py - boardCy) * sin,
+            y: boardCy + (px - boardCx) * sin + (py - boardCy) * cos,
+          });
+          return (
+            <>
+              {hotZoneCluster && (() => {
+                const clusterHexes = hotZoneCluster
+                  .map(id => map.hexes.find(h => h.id === id))
+                  .filter((h): h is Hex => !!h);
+                if (clusterHexes.length === 0) return null;
+                // The user's spec: take the cluster's BORDER (not centers),
+                // find the highest screen-y (could be a singular vertex or
+                // an edge between two vertices at the same y after rotation),
+                // and center the label on that.
+                //
+                // Compute every cluster-hex vertex in screen coords, take
+                // the minimum y, then average the x of all vertices within
+                // a small tolerance of that min (which handles the "edge"
+                // case where two top vertices sit at the same y).
+                const vertices = clusterHexes.flatMap(h => {
+                  const pts: Array<{ x: number; y: number }> = [];
+                  for (let c = 0; c < 6; c++) {
+                    const { x, y } = hexCorner(h, c);
+                    pts.push(rotateAroundBoard(x, y));
+                  }
+                  return pts;
+                });
+                const minY = Math.min(...vertices.map(v => v.y));
+                const TOP_TOL = 0.02;
+                const topVertices = vertices.filter(v => v.y <= minY + TOP_TOL);
+                const topLeft = Math.min(...topVertices.map(v => v.x));
+                const topRight = Math.max(...topVertices.map(v => v.x));
+                const centerX = (topLeft + topRight) / 2;
+                // Label CENTER sits slightly BELOW the highest border point
+                // (0.12 down). This shifts the label fully out of the y-range
+                // of the upper-neighbour tokens (which sit at distance 0.5
+                // above the border vertex, token radius 0.36, so their bottom
+                // edge ends at vertex y - 0.14). With label half-height 0.22
+                // and 0.12 offset, label top is at vertex y - 0.10 — fully
+                // below the upper-token y range at any rotation.
+                const labelY = minY + 0.12;
+                return (
+                  <g transform={`translate(${centerX} ${labelY})`} className="scenario-hotzone-label">
+                    <rect x={-0.85} y={-0.22} width={1.7} height={0.44} rx={0.10}
+                          fill="#d4441c" stroke="#5d462a" strokeWidth={0.04} opacity={0.92} />
+                    <text textAnchor="middle" dy={0.085} fontSize={0.26} fontWeight={700}
+                          fill="#f4e4bc" letterSpacing={0.02}>HOT ZONE</text>
+                  </g>
+                );
+              })()}
+
+              {wealthGapInfo && (() => {
+                const SQRT3 = Math.sqrt(3);
+                const perpSpec: Record<'q' | 'r' | 's', { perpX: number; perpY: number }> = {
+                  q: { perpX: SQRT3 / 2, perpY: -0.5 },
+                  r: { perpX: 0, perpY: 1 },
+                  s: { perpX: -SQRT3 / 2, perpY: -0.5 },
+                };
+                const { axis, richSide } = wealthGapInfo;
+                const { perpX, perpY } = perpSpec[axis];
+                // Rotate the perpendicular direction by the current board
+                // rotation so the labels sit on opposite ENDS of the visible
+                // dividing line, not where the line was pre-rotation.
+                const rotPerpX = perpX * cos - perpY * sin;
+                const rotPerpY = perpX * sin + perpY * cos;
+                const labelOffset = portEndR + 0.35;
+                const richX = boardCx + rotPerpX * labelOffset * richSide;
+                const richY = boardCy + rotPerpY * labelOffset * richSide;
+                const sparseX = boardCx - rotPerpX * labelOffset * richSide;
+                const sparseY = boardCy - rotPerpY * labelOffset * richSide;
+                return (
+                  <g className="scenario-wealthgap-labels">
+                    <g transform={`translate(${richX} ${richY})`}>
+                      <rect x={-0.70} y={-0.22} width={1.4} height={0.44} rx={0.10}
+                            fill="#da954b" stroke="#5d462a" strokeWidth={0.04} opacity={0.95} />
+                      <text textAnchor="middle" dy={0.085} fontSize={0.27} fontWeight={700}
+                            fill="#5d462a" letterSpacing={0.02}>RICH</text>
+                    </g>
+                    <g transform={`translate(${sparseX} ${sparseY})`}>
+                      <rect x={-0.65} y={-0.22} width={1.3} height={0.44} rx={0.10}
+                            fill="#7b7c47" stroke="#5d462a" strokeWidth={0.04} opacity={0.92} />
+                      <text textAnchor="middle" dy={0.085} fontSize={0.27} fontWeight={700}
+                            fill="#f4e4bc" letterSpacing={0.02}>POOR</text>
+                    </g>
+                  </g>
+                );
+              })()}
+            </>
+          );
+        })()}
         </g>
       </svg>
       <div className="board__view-controls">

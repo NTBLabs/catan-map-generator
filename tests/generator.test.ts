@@ -179,7 +179,7 @@ describe('challenge flavors', () => {
     variants.challenge = { flavor: 'random', targetResource: 'any' };
     const { map } = generateMap({ playerCount: 4, variants, maxAttempts: 2000 });
     expect(map.variants.challenge.rolledFlavor).toBeDefined();
-    expect(['scarcity', 'boomOrBust', 'drought']).toContain(map.variants.challenge.rolledFlavor);
+    expect(['scarcity', 'boomOrBust', 'drought', 'wealthGap', 'hotZone']).toContain(map.variants.challenge.rolledFlavor);
   });
 });
 

@@ -18,6 +18,8 @@ const FLAVOR_LABELS: Record<ChallengeFlavor, string> = {
   scarcity: 'Scarcity',
   boomOrBust: 'Boom-or-bust',
   drought: 'Drought',
+  wealthGap: 'Rich vs Poor',
+  hotZone: 'Hot zone',
   random: 'Random',
 };
 
@@ -26,7 +28,9 @@ const FLAVOR_HELP: Record<ChallengeFlavor, string> = {
   scarcity: 'The target resource will have very low total yield — it stays rare all game. Pick which resource (or "Any") below.',
   boomOrBust: 'The target resource gets ~60%+ of its pips on a single number. When that number rolls, payday. When it doesn\'t, drought.',
   drought: 'At least one cluster of 3 adjacent hexes all carry low-yield numbers (2/3/11/12) — a "dead zone" you have to plan around.',
-  random: 'Picks one of Scarcity / Boom-or-bust / Drought at random. The Analyze view shows which one rolled.',
+  wealthGap: 'One half of the board is RICH (every number 4+ pips), the other half is POOR. A territory war for the good side; the poor side is a slog.',
+  hotZone: 'Four+ red numbers (6/8) cluster into one contested region — both the dream apex pick and the constant robber target.',
+  random: 'Picks one of Scarcity / Boom-or-bust / Drought / Rich vs Poor / Hot zone at random. The Analyze view shows which one rolled.',
 };
 
 export function Controls() {
@@ -168,7 +172,14 @@ export function Controls() {
 
       <div className="controls__row controls__row--primary">
         <button className="btn btn--primary" onClick={generate} disabled={generating}>
-          {generating ? 'Generating…' : 'Generate map'}
+          {generating ? (
+            <>
+              <span className="spinner" aria-hidden="true" />
+              Generating…
+            </>
+          ) : (
+            'Generate map'
+          )}
         </button>
         <button
           className={`btn btn--secondary ${shareStatus === 'copied' ? 'btn--success' : ''} ${shareStatus === 'failed' ? 'btn--warn' : ''}`}

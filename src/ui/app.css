@@ -147,13 +147,6 @@
 .pip-dot { fill: var(--num-ink); }
 .pip-dot--red { fill: var(--num-red); }
 
-.port-rope {
-  stroke: #3a2510;
-  stroke-width: 0.025;
-  stroke-dasharray: 0.04 0.04;
-  opacity: 0.7;
-}
-
 .spot-badge {
   fill: var(--catan-cream);
   stroke: var(--catan-brown-dark);
@@ -377,6 +370,25 @@
   color: var(--catan-cream);
   border: 2px solid var(--catan-gold);
   flex: 1;
+}
+
+/* Generation spinner — CSS keyframe animation runs on the compositor
+   thread so it continues spinning even when the main thread is blocked
+   doing the synchronous generation work (up to ~1.3s at pc=6 hotZone).
+   Sized in em so it scales with the button text. */
+.spinner {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  margin-right: 0.5em;
+  vertical-align: -0.15em;
+  border: 0.18em solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spinner-spin 0.8s linear infinite;
+}
+@keyframes spinner-spin {
+  to { transform: rotate(360deg); }
 }
 .btn--secondary {
   background: var(--catan-gold);

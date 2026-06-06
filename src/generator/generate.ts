@@ -7,6 +7,7 @@ import type {
   Port,
   ProducingResource,
   Variants,
+  WealthGapTarget,
 } from '../game/types';
 import { checkHardConstraints } from './constraints';
 import { mulberry32, makeSeed, pick } from './random';
@@ -17,7 +18,9 @@ import {
   DEFAULT_SCARCITY_CONFIG,
   hasBalancedPipDistribution,
   hasDroughtCluster,
+  hasHotZone,
   hasStrategicDiversity,
+  hasWealthGap,
   isResourceHealthy,
   scoreMap,
   type ScarcityConfig,
@@ -53,16 +56,26 @@ export function generateMap(opts: GenerateOptions): GenerateResult {
   let hardOnlyFallback: { hexes: Hex[]; ports: Port[] } | null = null;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const candidate = randomizeMap(opts.playerCount, opts.variants, rng, opts.spreadHighYieldMode);
+    // Resolve challenge BEFORE placement so hotZone can disable the no-red-
+    // adjacency rule and wealthGap can target a specific axis. Each attempt
+    // re-resolves so 'random' flavor can roll different kinds per attempt.
+    const challenge = resolveChallenge(opts.variants, rng);
+    const candidate = randomizeMap(
+      opts.playerCount,
+      opts.variants,
+      rng,
+      opts.spreadHighYieldMode,
+      challenge.wealthGapTarget,
+    );
     const hard = checkHardConstraints(candidate.hexes, candidate.ports, {
       noSameNumberAdjacent: opts.variants.noSameNumberAdjacent,
       noSameNumberOnResource: opts.variants.noSameNumberOnResource,
       noMultipleRedsOnResource: opts.variants.noMultipleRedsOnResource,
+      allowRedAdjacency: challenge.kind === 'hotZone',
     });
     if (!hard.ok) continue;
     if (!hardOnlyFallback) hardOnlyFallback = { hexes: candidate.hexes, ports: candidate.ports };
 
-    const challenge = resolveChallenge(opts.variants, rng);
     if (!challengeMatches(candidate.hexes, candidate.ports, opts.playerCount, challenge)) continue;
 
     const scored = scoreMap(
@@ -133,6 +146,10 @@ export function generateMap(opts: GenerateOptions): GenerateResult {
 interface ResolvedChallenge {
   kind: 'none' | ChallengeRolled;
   target?: ProducingResource;
+  /** wealthGap-specific: which axis cuts the board and which side is rich.
+   *  Decided at challenge-resolution time so number placement can bias
+   *  high-pip tokens to the rich side. */
+  wealthGapTarget?: WealthGapTarget;
 }
 
 function resolveChallenge(variants: Variants, rng: () => number): ResolvedChallenge {
@@ -140,7 +157,7 @@ function resolveChallenge(variants: Variants, rng: () => number): ResolvedChalle
   if (flavor === 'none') return { kind: 'none' };
   let kind: ChallengeRolled;
   if (flavor === 'random') {
-    kind = pick<ChallengeRolled>(['scarcity', 'boomOrBust', 'drought'], rng);
+    kind = pick<ChallengeRolled>(['scarcity', 'boomOrBust', 'drought', 'wealthGap', 'hotZone'], rng);
   } else {
     kind = flavor;
   }
@@ -151,7 +168,14 @@ function resolveChallenge(variants: Variants, rng: () => number): ResolvedChalle
       ? pick(PRODUCING_RESOURCES, rng)
       : pickedTarget;
   }
-  return { kind, target };
+  let wealthGapTarget: WealthGapTarget | undefined;
+  if (kind === 'wealthGap') {
+    wealthGapTarget = {
+      axis: pick<'q' | 'r' | 's'>(['q', 'r', 's'], rng),
+      richSide: pick<1 | -1>([1, -1], rng),
+    };
+  }
+  return { kind, target, wealthGapTarget };
 }
 
 function challengeMatches(
@@ -178,6 +202,12 @@ function challengeMatches(
   }
   if (challenge.kind === 'drought') {
     return hasDroughtCluster(hexes);
+  }
+  if (challenge.kind === 'wealthGap') {
+    return hasWealthGap(hexes);
+  }
+  if (challenge.kind === 'hotZone') {
+    return hasHotZone(hexes);
   }
   return false;
 }

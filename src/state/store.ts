@@ -90,23 +90,32 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   generate: () => {
     set({ generating: true });
-    const { playerCount, variants } = get();
-    try {
-      const result = generateMap({ playerCount, variants });
-      const scored = rescore(result.map);
-      set({
-        map: result.map,
-        scored,
-        attempts: result.attempts,
-        fellBack: result.fellBack,
-        generating: false,
-        variants: result.map.variants,
-      });
-      writeMapToUrl(result.map);
-    } catch (err) {
-      console.error(err);
-      set({ generating: false });
-    }
+    // Defer the blocking generation work to the next event-loop tick so
+    // React has a chance to PAINT the "generating" state before the main
+    // thread freezes. Without this, the spinner is invisible at pc=6
+    // hotZone (~1.3s blocking) because `set` + the sync work happen in
+    // the same microtask and React batches them into one render. CSS
+    // keyframe animations on the spinner keep running on the compositor
+    // thread even while JS is blocked, so the indicator actually animates.
+    setTimeout(() => {
+      const { playerCount, variants } = get();
+      try {
+        const result = generateMap({ playerCount, variants });
+        const scored = rescore(result.map);
+        set({
+          map: result.map,
+          scored,
+          attempts: result.attempts,
+          fellBack: result.fellBack,
+          generating: false,
+          variants: result.map.variants,
+        });
+        writeMapToUrl(result.map);
+      } catch (err) {
+        console.error(err);
+        set({ generating: false });
+      }
+    }, 0);
   },
 
   loadFromUrl: (encoded) => {

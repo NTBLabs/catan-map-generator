@@ -25,7 +25,10 @@ const V3_VERSION = 3;
 const V3_BYTE_LEN = 7;
 
 const DESERT_REPLACEMENTS: ProducingResource[] = ['wood', 'brick', 'wheat', 'sheep', 'ore'];
-const CHALLENGE_FLAVORS: ChallengeFlavor[] = ['none', 'scarcity', 'boomOrBust', 'drought', 'random'];
+// Index-stable: old URLs encoded indexes 0-4, so 'wealthGap' and 'hotZone' are
+// appended at the end rather than slotted in alphabetical order. Adding more
+// flavors past index 7 would overflow the 3-bit field and need a schema bump.
+const CHALLENGE_FLAVORS: ChallengeFlavor[] = ['none', 'scarcity', 'boomOrBust', 'drought', 'random', 'wealthGap', 'hotZone'];
 const CHALLENGE_TARGETS: Array<ProducingResource | 'any'> = ['any', 'wood', 'brick', 'wheat', 'sheep', 'ore'];
 
 class BitWriter {

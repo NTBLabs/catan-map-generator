@@ -1175,3 +1175,166 @@ export function hasDroughtCluster(hexes: Hex[]): boolean {
   }
   return false;
 }
+
+/** Wealth-gap challenge predicate: pip totals lopsided across one of the
+ *  three hex-grid axes, AND every number token on the rich side has pip
+ *  value >= 3 (numbers 4/5/6/8/9/10 — no 2/3/11/12 mixed in). Hexes lying
+ *  on the dividing line itself (axis coord == 0) are exempt.
+ *
+ *  The "no low-pip on rich" rule was added 2026-06 — concentration alone
+ *  produced visually muddy maps where the rich side still had a sprinkle
+ *  of 2s/3s/11s/12s. Forcing rich-side numbers to be 4+ pips makes the
+ *  rich side feel genuinely rich (good yields all the way through) while
+ *  the sparse side carries the slow numbers.
+ *
+ *  Delegates to findWealthGapAxis for the actual logic so the UI overlay
+ *  and the predicate stay in sync.
+ */
+export function hasWealthGap(hexes: Hex[]): boolean {
+  return findWealthGapAxis(hexes) !== null;
+}
+
+/** Diagnostic for the hotZone scenario UI overlay. Returns the hex ids of
+ *  the LARGEST connected red-number cluster on the board, or null if no
+ *  cluster reaches the per-board-size minimum (4 for base 3-4 player,
+ *  5 for the 5-6 expansion). Threshold scales because the expansion bag
+ *  carries 6 reds vs the base's 4, so a "noticeably contested" cluster
+ *  needs more hexes to feel as concentrated on the larger board.
+ */
+export function findHotZoneCluster(hexes: Hex[]): string[] | null {
+  const MIN_CLUSTER = hexes.length <= 19 ? 4 : 5;
+  const RED = new Set([6, 8]);
+  const byKey = new Map(hexes.map(h => [`${h.q},${h.r}`, h] as const));
+  const redHexes = hexes.filter(h => h.number !== null && RED.has(h.number));
+  if (redHexes.length < MIN_CLUSTER) return null;
+  const visited = new Set<string>();
+  let best: string[] = [];
+  for (const start of redHexes) {
+    const startKey = `${start.q},${start.r}`;
+    if (visited.has(startKey)) continue;
+    const ids: string[] = [];
+    const queue: Hex[] = [start];
+    visited.add(startKey);
+    while (queue.length) {
+      const cur = queue.shift()!;
+      ids.push(cur.id);
+      const nbCoords = [
+        { q: cur.q + 1, r: cur.r }, { q: cur.q + 1, r: cur.r - 1 },
+        { q: cur.q, r: cur.r - 1 }, { q: cur.q - 1, r: cur.r },
+        { q: cur.q - 1, r: cur.r + 1 }, { q: cur.q, r: cur.r + 1 },
+      ];
+      for (const c of nbCoords) {
+        const key = `${c.q},${c.r}` as const;
+        if (visited.has(key)) continue;
+        const nb = byKey.get(key);
+        if (!nb || nb.number === null || !RED.has(nb.number)) continue;
+        visited.add(key);
+        queue.push(nb);
+      }
+    }
+    if (ids.length > best.length) best = ids;
+  }
+  return best.length >= MIN_CLUSTER ? best : null;
+}
+
+/** Diagnostic for the wealthGap scenario UI overlay AND backing logic for
+ *  hasWealthGap. Returns the axis + direction of the LARGEST pip-mass
+ *  concentration that ALSO satisfies the strict rich-side quality rule:
+ *  EVERY numbered hex on the rich side has pip value >= 3 (number ∈
+ *  {4, 5, 6, 8, 9, 10}). Hexes on the dividing line (axis coord == 0)
+ *  are exempt — low-pip exceptions live on the central spine.
+ *
+ *  Strict rule is achievable because generate.ts picks a wealthGap target
+ *  axis at challenge-resolution time and randomize.ts biases number
+ *  placement: high-pip numbers prefer the rich side, low-pip prefer the
+ *  dividing line first then sparse side. Random placement could never
+ *  reliably cluster low-pip tokens off one axis-side — placement targeting
+ *  is what makes the strict rule realistic.
+ */
+export function findWealthGapAxis(hexes: Hex[]):
+  { axis: 'q' | 'r' | 's'; richSide: 1 | -1; concentration: number } | null
+{
+  const THRESHOLD = 0.65;
+  const MIN_RICH_PIP = 3;
+  const MAX_LOW_PIP_ON_RICH = 0;
+  const axisFns: Record<'q' | 'r' | 's', (h: Hex) => number> = {
+    q: h => h.q,
+    r: h => h.r,
+    s: h => -h.q - h.r,
+  };
+  let best: { axis: 'q' | 'r' | 's'; richSide: 1 | -1; concentration: number } | null = null;
+  for (const axis of ['q', 'r', 's'] as const) {
+    let pos = 0, neg = 0;
+    for (const hex of hexes) {
+      if (hex.resource === 'desert' || hex.number === null) continue;
+      const pip = PIP_VALUE[hex.number] ?? 0;
+      const c = axisFns[axis](hex);
+      if (c > 0) pos += pip;
+      else if (c < 0) neg += pip;
+    }
+    const total = pos + neg;
+    if (total === 0) continue;
+    const richSide: 1 | -1 = pos >= neg ? 1 : -1;
+    const concentration = Math.max(pos, neg) / total;
+    if (concentration < THRESHOLD) continue;
+    // Quality check: at most MAX_LOW_PIP_ON_RICH low-pip hexes on rich side.
+    let lowPipOnRich = 0;
+    for (const hex of hexes) {
+      if (hex.resource === 'desert' || hex.number === null) continue;
+      const c = axisFns[axis](hex);
+      const sign = c > 0 ? 1 : c < 0 ? -1 : 0;
+      if (sign !== richSide) continue; // sparse side and dividing-line hexes exempt
+      const pip = PIP_VALUE[hex.number] ?? 0;
+      if (pip < MIN_RICH_PIP) lowPipOnRich++;
+      if (lowPipOnRich > MAX_LOW_PIP_ON_RICH) break;
+    }
+    if (lowPipOnRich > MAX_LOW_PIP_ON_RICH) continue;
+    if (!best || concentration > best.concentration) {
+      best = { axis, richSide, concentration };
+    }
+  }
+  return best;
+}
+
+/** Hot-zone challenge predicate: connected red-number (6/8) cluster reaches
+ *  the per-board-size minimum — 4 for the 19-hex base board, 5 for the
+ *  30-hex expansion. Requires the noRedAdjacency hard constraint to be
+ *  relaxed at generation time — generate.ts must pass allowRedAdjacency
+ *  =true to checkHardConstraints when this flavor is active. Without that,
+ *  the board can't produce adjacent reds and this predicate always fails.
+ */
+export function hasHotZone(hexes: Hex[]): boolean {
+  const MIN_CLUSTER = hexes.length <= 19 ? 4 : 5;
+  const RED = new Set([6, 8]);
+  const byKey = new Map(hexes.map(h => [`${h.q},${h.r}`, h] as const));
+  const redHexes = hexes.filter(h => h.number !== null && RED.has(h.number));
+  if (redHexes.length < MIN_CLUSTER) return false;
+  const visited = new Set<string>();
+  for (const start of redHexes) {
+    const startKey = `${start.q},${start.r}`;
+    if (visited.has(startKey)) continue;
+    // BFS through red-only neighbors.
+    let size = 0;
+    const queue: Hex[] = [start];
+    visited.add(startKey);
+    while (queue.length) {
+      const cur = queue.shift()!;
+      size++;
+      const nbCoords = [
+        { q: cur.q + 1, r: cur.r }, { q: cur.q + 1, r: cur.r - 1 },
+        { q: cur.q, r: cur.r - 1 }, { q: cur.q - 1, r: cur.r },
+        { q: cur.q - 1, r: cur.r + 1 }, { q: cur.q, r: cur.r + 1 },
+      ];
+      for (const c of nbCoords) {
+        const key = `${c.q},${c.r}` as const;
+        if (visited.has(key)) continue;
+        const nb = byKey.get(key);
+        if (!nb || nb.number === null || !RED.has(nb.number)) continue;
+        visited.add(key);
+        queue.push(nb);
+      }
+    }
+    if (size >= MIN_CLUSTER) return true;
+  }
+  return false;
+}
