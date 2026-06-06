@@ -167,36 +167,21 @@ export async function captureBoardPng(opts: CaptureOptions = {}): Promise<Blob> 
   return blob;
 }
 
-export type ShareResult = 'shared' | 'downloaded';
-
-/** Share the board image via the native share sheet when files are supported
- *  (mobile), otherwise trigger a file download. Returns which path was taken;
- *  resolves to null if the user cancels the share sheet. */
-export async function shareOrSaveBoard(opts: CaptureOptions & { filename?: string } = {}): Promise<ShareResult | null> {
+/** Force a file download of the board PNG on every platform — never routes
+ *  through the native share sheet (a "Download" action should just download).
+ *  On desktop this saves to the downloads folder; on iOS Safari it downloads
+ *  to the Files app. */
+export async function downloadBoardImage(opts: CaptureOptions & { filename?: string } = {}): Promise<void> {
   const blob = await captureBoardPng(opts);
   const filename = opts.filename ?? 'catan-map.png';
-  const file = new File([blob], filename, { type: 'image/png' });
-
-  const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
-  if (typeof nav.share === 'function' && nav.canShare?.({ files: [file] })) {
-    try {
-      await nav.share({ files: [file], title: 'Catan map', text: 'Generated with Catan Map Generator' });
-      return 'shared';
-    } catch (err) {
-      // User dismissed the sheet — not an error worth surfacing.
-      if (err instanceof DOMException && err.name === 'AbortError') return null;
-      // Fall through to download on any other share failure.
-    }
-  }
-
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
   a.download = filename;
+  a.rel = 'noopener';
   document.body.appendChild(a);
   a.click();
   a.remove();
   // Revoke after a tick so the download has a chance to start.
   setTimeout(() => URL.revokeObjectURL(url), 1000);
-  return 'downloaded';
 }

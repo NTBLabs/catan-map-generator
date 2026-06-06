@@ -4,7 +4,7 @@ import { useGesture } from '@use-gesture/react';
 import { useAppStore } from '../state/store';
 import { PRODUCING_RESOURCES } from '../game/constants';
 import type { ChallengeFlavor, PlayerCount, ProducingResource } from '../game/types';
-import { shareOrSaveBoard } from './exportImage';
+import { downloadBoardImage } from './exportImage';
 import {
   CheckIcon,
   CloseIcon,
@@ -106,10 +106,10 @@ export function Controls() {
     window.setTimeout(() => setShareMenuOpen(false), 1200);
   };
 
-  // Image export / native share. On mobile (file-share capable) this opens the
-  // OS share sheet; elsewhere it downloads a PNG. Status mirrors the link-share
-  // button so the user gets feedback either way.
-  const [imageStatus, setImageStatus] = useState<'idle' | 'busy' | 'shared' | 'saved' | 'failed'>('idle');
+  // Image download. Always forces a file download (never the OS share sheet) —
+  // a "Download" action should just download. Status drives the bubble's
+  // spinner/checkmark feedback.
+  const [imageStatus, setImageStatus] = useState<'idle' | 'busy' | 'saved' | 'failed'>('idle');
   useEffect(() => {
     if (imageStatus === 'idle' || imageStatus === 'busy') return;
     const t = window.setTimeout(() => setImageStatus('idle'), 2000);
@@ -120,20 +120,16 @@ export function Controls() {
     setImageStatus('busy');
     try {
       const seed = map?.seed;
-      const result = await shareOrSaveBoard({
+      await downloadBoardImage({
         filename: seed !== undefined ? `catan-map-${seed.toString(36)}.png` : 'catan-map.png',
         seedLabel: seed !== undefined ? `seed: ${seed.toString(36)}` : undefined,
       });
-      // null = user cancelled the share sheet; treat as a no-op.
-      setImageStatus(result === 'downloaded' ? 'saved' : result === 'shared' ? 'shared' : 'idle');
-      // Native share takes over the screen, so close immediately; otherwise
-      // leave the menu up briefly so "Saved!" feedback is visible.
-      window.setTimeout(() => setShareMenuOpen(false), result === 'shared' ? 0 : 1200);
+      setImageStatus('saved');
     } catch (err) {
-      console.warn('image export failed', err);
+      console.warn('image download failed', err);
       setImageStatus('failed');
-      window.setTimeout(() => setShareMenuOpen(false), 1200);
     }
+    window.setTimeout(() => setShareMenuOpen(false), 1200);
   };
   // Share data. The native share sheet (below) is the primary path on mobile —
   // it reaches iMessage, Instagram, Snapchat, Discord, Slack, and iOS's
@@ -365,21 +361,20 @@ export function Controls() {
                 aria-live="polite"
               >
                 <span
-                  className={`share-target__icon${imageStatus === 'saved' || imageStatus === 'shared' ? '' : ' share-target__icon--ghost'}`}
-                  style={imageStatus === 'saved' || imageStatus === 'shared' ? { background: '#6fa84a', borderColor: '#3d6a26', color: '#fff' } : undefined}
+                  className={`share-target__icon${imageStatus === 'saved' ? '' : ' share-target__icon--ghost'}`}
+                  style={imageStatus === 'saved' ? { background: '#6fa84a', borderColor: '#3d6a26', color: '#fff' } : undefined}
                 >
                   {imageStatus === 'busy'
                     ? <span className="spinner" aria-hidden="true" />
-                    : imageStatus === 'saved' || imageStatus === 'shared'
+                    : imageStatus === 'saved'
                       ? <CheckIcon />
                       : <DownloadIcon />}
                 </span>
                 <span className="share-target__label">
                   {imageStatus === 'busy' ? 'Saving…'
                     : imageStatus === 'saved' ? 'Saved!'
-                      : imageStatus === 'shared' ? 'Shared!'
-                        : imageStatus === 'failed' ? 'Failed'
-                          : 'Download'}
+                      : imageStatus === 'failed' ? 'Failed'
+                        : 'Download'}
                 </span>
               </button>
 
