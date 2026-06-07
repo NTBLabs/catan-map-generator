@@ -29,11 +29,11 @@ const PLAYER_COUNTS: PlayerCount[] = [3, 4, 5, 6];
 
 const FLAVOR_LABELS: Record<ChallengeFlavor, string> = {
   none: 'None (balanced)',
+  hotZone: 'Hot zone',
+  wealthGap: 'Rich vs Poor',
   scarcity: 'Scarcity',
   boomOrBust: 'Boom-or-bust',
   drought: 'Drought',
-  wealthGap: 'Rich vs Poor',
-  hotZone: 'Hot zone',
   random: 'Random',
 };
 
