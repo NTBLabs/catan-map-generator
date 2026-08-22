@@ -1,0 +1,77 @@
+﻿
+[1m[7m[36m RUN [39m[27m[22m [36mv2.1.9 [39m[90mD:/Personal Projects/Catan Map Generator[39m
+
+[90mstdout[2m | tests/stress-new-flavors.test.ts[2m > [22m[2mnew challenge flavors[2m > [22m[2mplayer balance under wealthGap + hotZone (per-pc deltas)
+[22m[39m
+=========================== player balance: wealthGap (n=200) ===========================
+
+  pc=3  (2.9s, 200 maps)  ✅ GREEN  max|Δ| = 1.88%
+    P1     mean=28.61   Δ=-1.54%
+    P2    mean=28.96   Δ=-0.34%
+    P3   mean=29.60   Δ=1.88%
+    Fairness stdev mean: 0.579
+
+  pc=4  (4.0s, 200 maps)  ✅ GREEN  max|Δ| = 2.25%
+    P1     mean=26.90   Δ=-1.60%
+    P2    mean=27.11   Δ=-0.83%
+    P3    mean=27.39   Δ=0.18%
+    P4   mean=27.96   Δ=2.25%
+    Fairness stdev mean: 0.637
+
+  pc=5  (30.5s, 200 maps)  ✅ GREEN  max|Δ| = 3.13%
+    P1     mean=28.74   Δ=-2.11%
+    P2    mean=29.00   Δ=-1.21%
+    P3    mean=29.28   Δ=-0.27%
+    P4    mean=29.49   Δ=0.46%
+    P5   mean=30.28   Δ=3.13%
+    Fairness stdev mean: 0.698
+
+  pc=6  (30.4s, 200 maps)  ✅ GREEN  max|Δ| = 3.74%
+    P1     mean=27.60   Δ=-1.68%
+    P2    mean=27.70   Δ=-1.32%
+    P3    mean=27.76   Δ=-1.10%
+    P4    mean=27.98   Δ=-0.31%
+    P5    mean=28.26   Δ=0.67%
+    P6   mean=29.12   Δ=3.74%
+    Fairness stdev mean: 0.711
+
+=========================== player balance: hotZone (n=200) ===========================
+
+  pc=3  (7.0s, 200 maps)  ✅ GREEN  max|Δ| = 0.99%
+    P1     mean=29.35   Δ=-0.43%
+    P2    mean=29.31   Δ=-0.57%
+    P3   mean=29.77   Δ=0.99%
+    Fairness stdev mean: 0.561
+
+  pc=4  (6.8s, 200 maps)  ✅ GREEN  max|Δ| = 1.16%
+    P1     mean=27.65   Δ=-0.13%
+    P2    mean=27.65   Δ=-0.14%
+    P3    mean=27.44   Δ=-0.89%
+    P4   mean=28.00   Δ=1.16%
+    Fairness stdev mean: 0.635
+
+  pc=5  (30.9s, 200 maps)  ✅ GREEN  max|Δ| = 1.29%
+    P1     mean=29.20   Δ=0.68%
+    P2    mean=28.96   Δ=-0.15%
+    P3    mean=28.79   Δ=-0.73%
+    P4    mean=28.68   Δ=-1.09%
+    P5   mean=29.38   Δ=1.29%
+    Fairness stdev mean: 0.603
+
+  pc=6  (35.8s, 200 maps)  ✅ GREEN  max|Δ| = 1.57%
+    P1     mean=28.08   Δ=0.53%
+    P2    mean=27.94   Δ=0.01%
+    P3    mean=27.79   Δ=-0.54%
+    P4    mean=27.70   Δ=-0.84%
+    P5    mean=27.73   Δ=-0.73%
+    P6   mean=28.38   Δ=1.57%
+    Fairness stdev mean: 0.612
+
+ [32m✓[39m tests/stress-new-flavors.test.ts [2m([22m[2m2 tests[22m[2m | [22m[33m1 skipped[39m[2m)[22m[33m 148375[2mms[22m[39m
+   [33m[2m✓[22m[39m new challenge flavors[2m > [22mplayer balance under wealthGap + hotZone (per-pc deltas) [33m148374[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m1 passed[39m[22m[2m | [22m[33m1 skipped[39m[90m (2)[39m
+[2m   Start at [22m 20:45:02
+[2m   Duration [22m 148.89s[2m (transform 113ms, setup 0ms, collect 132ms, tests 148.38s, environment 0ms, prepare 103ms)[22m
+

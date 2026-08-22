@@ -1,0 +1,51 @@
+﻿
+[1m[7m[36m RUN [39m[27m[22m [36mv2.1.9 [39m[90mD:/Personal Projects/Catan Map Generator[39m
+
+[90mstdout[2m | tests/stress-new-flavors.test.ts[2m > [22m[2mnew challenge flavors[2m > [22m[2mwealthGap + hotZone empirical validation
+[22m[39m
+=========================== flavor=wealthGap (n=150) ===========================
+
+  pc=4  (3.4s, 150 maps)
+    Acceptance: 150/150 (100.0%)   Fallback: 0 (0.0%)
+    Attempts:   mean=43.4  p90=112  max=191
+    Fairness:   mean=0.666  p90=0.962  max=0.998  (challenge threshold = 1.0)
+    Flavor match: 150/150 (100.0%)
+    Resource health pass: 150/150 (100.0%)
+    Wealth concentration (max axis-side fraction): mean=0.665  p90=0.683
+    Desert placement: rich=0  div=12  sparse=138   (maps with any desert on rich: 0/150 = 0.0%)
+
+  pc=6  (34.2s, 150 maps)
+    Acceptance: 150/150 (100.0%)   Fallback: 0 (0.0%)
+    Attempts:   mean=198.7  p90=459  max=953
+    Fairness:   mean=0.746  p90=0.961  max=0.998  (challenge threshold = 1.0)
+    Flavor match: 150/150 (100.0%)
+    Resource health pass: 150/150 (100.0%)
+    Wealth concentration (max axis-side fraction): mean=0.724  p90=0.781
+    Desert placement: rich=48  div=50  sparse=202   (maps with any desert on rich: 48/150 = 32.0%)
+
+=========================== flavor=hotZone (n=150) ===========================
+
+  pc=4  (4.5s, 150 maps)
+    Acceptance: 150/150 (100.0%)   Fallback: 0 (0.0%)
+    Attempts:   mean=62.4  p90=151  max=359
+    Fairness:   mean=0.639  p90=0.885  max=0.997  (challenge threshold = 1.0)
+    Flavor match: 150/150 (100.0%)
+    Resource health pass: 144/150 (96.0%)
+    Avg red-with-red-neighbor count per map: 4.00
+
+  pc=6  (116.9s, 150 maps)
+    Acceptance: 150/150 (100.0%)   Fallback: 0 (0.0%)
+    Attempts:   mean=644.2  p90=1514  max=4555
+    Fairness:   mean=0.624  p90=0.881  max=0.997  (challenge threshold = 1.0)
+    Flavor match: 150/150 (100.0%)
+    Resource health pass: 150/150 (100.0%)
+    Avg red-with-red-neighbor count per map: 5.08
+
+ [32m✓[39m tests/stress-new-flavors.test.ts [2m([22m[2m2 tests[22m[2m | [22m[33m1 skipped[39m[2m)[22m[33m 158982[2mms[22m[39m
+   [33m[2m✓[22m[39m new challenge flavors[2m > [22mwealthGap + hotZone empirical validation [33m158981[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m1 passed[39m[22m[2m | [22m[33m1 skipped[39m[90m (2)[39m
+[2m   Start at [22m 12:31:37
+[2m   Duration [22m 159.43s[2m (transform 130ms, setup 0ms, collect 152ms, tests 158.98s, environment 0ms, prepare 113ms)[22m
+

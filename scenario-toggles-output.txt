@@ -1,0 +1,105 @@
+﻿
+[1m[7m[36m RUN [39m[27m[22m [36mv2.1.9 [39m[90mD:/Personal Projects/Catan Map Generator[39m
+
+[90mstdout[2m | tests/stress-scenario-toggles.test.ts[2m > [22m[2mscenario × toggle sweep[2m > [22m[2mquantify toggle impact on wealthGap + hotZone
+[22m[39m
+┌─────────────────────────────────────────────────────────────────────────┐
+│ wealthGap    pc=4   n=100 per combo                                  │
+└─────────────────────────────────────────────────────────────────────────┘
+  combo                   accept  fbck%  attempts(mean/p90/max)  fair(mean/p90)  Δmax%  match%   time
+  all on (default)       100/100     0%     21/  47/ 159        0.69/0.98     2.79%    100%    1.2s
+  NSNA off               100/100     0%     12/  31/  45        0.65/0.97     2.51%    100%    0.6s
+  NSNoR off              100/100     0%     17/  40/ 112        0.69/0.98     2.72%    100%    0.8s
+  NMR off                100/100     0%     14/  37/  75        0.67/0.92     2.37%    100%    0.7s
+  NSNA + NSNoR off       100/100     0%     11/  27/  40        0.65/0.97     2.45%    100%    0.6s
+  NSNA + NMR off         100/100     0%      9/  22/  54        0.65/0.92     2.17%    100%    0.6s
+  NSNoR + NMR off        100/100     0%     10/  19/  42        0.65/0.92     2.42%    100%    0.6s
+  all off                100/100     0%      8/  19/  40        0.66/0.94     2.31%    100%    0.5s
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│ wealthGap    pc=6   n=60 per combo                                  │
+└─────────────────────────────────────────────────────────────────────────┘
+  combo                   accept  fbck%  attempts(mean/p90/max)  fair(mean/p90)  Δmax%  match%   time
+  all on (default)         60/60     0%    145/ 340/ 593        0.71/0.94     3.83%    100%    9.1s
+  NSNA off                 60/60     0%     21/  47/  93        0.75/0.95     3.74%    100%    1.4s
+  NSNoR off                60/60     0%     36/  82/ 272        0.73/0.97     3.89%    100%    2.4s
+  NMR off                  60/60     0%    145/ 340/ 593        0.71/0.94     3.83%    100%    9.2s
+  NSNA + NSNoR off         60/60     0%     12/  29/  47        0.74/0.97     3.49%    100%    0.9s
+  NSNA + NMR off           60/60     0%     21/  47/  93        0.75/0.95     3.74%    100%    1.5s
+  NSNoR + NMR off          60/60     0%     35/  82/ 272        0.74/0.97     3.94%    100%    2.3s
+  all off                  60/60     0%     12/  29/  47        0.74/0.97     3.49%    100%    0.9s
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│ hotZone      pc=4   n=100 per combo                                  │
+└─────────────────────────────────────────────────────────────────────────┘
+  combo                   accept  fbck%  attempts(mean/p90/max)  fair(mean/p90)  Δmax%  match%   time
+  all on (default)       100/100     0%     59/ 140/ 274        0.61/0.92     0.75%    100%    2.7s
+  NSNA off               100/100     0%     25/  62/ 123        0.65/0.91     1.54%    100%    1.2s
+  NSNoR off              100/100     0%     44/ 106/ 182        0.61/0.93     0.96%    100%    2.0s
+  NMR off                100/100     0%    113/ 243/ 582        0.61/0.90     0.70%    100%    5.0s
+  NSNA + NSNoR off       100/100     0%     22/  52/ 123        0.65/0.92     1.44%    100%    1.1s
+  NSNA + NMR off         100/100     0%     33/  71/ 170        0.61/0.92     0.59%    100%    1.5s
+  NSNoR + NMR off        100/100     0%     96/ 221/ 408        0.62/0.95     0.84%    100%    4.2s
+  all off                100/100     0%     28/  69/ 170        0.61/0.92     0.60%    100%    1.3s
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│ hotZone      pc=6   n=60 per combo                                  │
+└─────────────────────────────────────────────────────────────────────────┘
+  combo                   accept  fbck%  attempts(mean/p90/max)  fair(mean/p90)  Δmax%  match%   time
+  all on (default)         60/60     0%    878/2252/4062        0.64/0.87     1.92%    100%   60.9s
+  NSNA off                 60/60     0%     52/ 109/ 187        0.64/0.89     2.03%    100%    3.6s
+  NSNoR off                60/60     0%    452/ 982/2024        0.60/0.84     1.92%    100%   31.5s
+  NMR off                  60/60     0%    878/2252/4062        0.64/0.87     1.92%    100%   60.5s
+  NSNA + NSNoR off         60/60     0%     39/  95/ 160        0.64/0.89     1.99%    100%    2.8s
+  NSNA + NMR off           60/60     0%     52/ 109/ 187        0.64/0.89     2.03%    100%    3.6s
+  NSNoR + NMR off          60/60     0%    452/ 982/2024        0.60/0.84     1.92%    100%   31.3s
+  all off                  60/60     0%     39/  95/ 160        0.64/0.89     1.99%    100%    2.7s
+
+┌══════════════════════════════════════════════════════════════════════════┐
+│ TOGGLE IMPACT SUMMARY                                                    │
+└══════════════════════════════════════════════════════════════════════════┘
+
+  wealthGap pc=4 — vs default baseline (attempts 21, fairness 0.688, Δmax 2.79%):
+    NSNA off                attempts -43%   ✓ 43% faster
+    NSNoR off               attempts -20%   ✓ 20% faster
+    NMR off                 attempts -33%   ✓ 33% faster
+    NSNA + NSNoR off        attempts -49%   ✓ 49% faster
+    NSNA + NMR off          attempts -56%   ✓ 56% faster  ✓ Δmax -0.62pp
+    NSNoR + NMR off         attempts -53%   ✓ 53% faster
+    all off                 attempts -62%   ✓ 62% faster
+
+  wealthGap pc=6 — vs default baseline (attempts 145, fairness 0.715, Δmax 3.83%):
+    NSNA off                attempts -86%   ✓ 86% faster
+    NSNoR off               attempts -75%   ✓ 75% faster
+    NMR off                 attempts +0%   
+    NSNA + NSNoR off        attempts -92%   ✓ 92% faster
+    NSNA + NMR off          attempts -86%   ✓ 86% faster
+    NSNoR + NMR off         attempts -75%   ✓ 75% faster
+    all off                 attempts -92%   ✓ 92% faster
+
+  hotZone pc=4 — vs default baseline (attempts 59, fairness 0.605, Δmax 0.75%):
+    NSNA off                attempts -57%   ✓ 57% faster  ✗ Δmax +0.79pp
+    NSNoR off               attempts -25%   ✓ 25% faster
+    NMR off                 attempts +93%   ✗ 93% slower
+    NSNA + NSNoR off        attempts -62%   ✓ 62% faster  ✗ Δmax +0.70pp
+    NSNA + NMR off          attempts -43%   ✓ 43% faster
+    NSNoR + NMR off         attempts +63%   ✗ 63% slower
+    all off                 attempts -52%   ✓ 52% faster
+
+  hotZone pc=6 — vs default baseline (attempts 878, fairness 0.639, Δmax 1.92%):
+    NSNA off                attempts -94%   ✓ 94% faster
+    NSNoR off               attempts -48%   ✓ 48% faster
+    NMR off                 attempts +0%   
+    NSNA + NSNoR off        attempts -96%   ✓ 96% faster
+    NSNA + NMR off          attempts -94%   ✓ 94% faster
+    NSNoR + NMR off         attempts -48%   ✓ 48% faster
+    all off                 attempts -96%   ✓ 96% faster
+
+ [32m✓[39m tests/stress-scenario-toggles.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 249077[2mms[22m[39m
+   [33m[2m✓[22m[39m scenario × toggle sweep[2m > [22mquantify toggle impact on wealthGap + hotZone [33m249076[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m   Start at [22m 20:53:51
+[2m   Duration [22m 249.67s[2m (transform 191ms, setup 0ms, collect 130ms, tests 249.08s, environment 0ms, prepare 231ms)[22m
+
