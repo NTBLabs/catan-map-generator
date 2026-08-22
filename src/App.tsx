@@ -26,6 +26,7 @@ export function App() {
         <ParentLockup
           productName="CATAN LAB"
           color="var(--catan-gold)"
+          parentColor="var(--catan-sand)"
           className="app__title"
         />
         {seed !== undefined && <span className="app__seed">seed: {seed.toString(36)}</span>}

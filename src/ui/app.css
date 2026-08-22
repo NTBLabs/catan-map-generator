@@ -38,10 +38,21 @@
 
 .app__title {
   font-weight: 800;
-  letter-spacing: 0.04em;
+  /* Wordmark treatment, and the ONLY one applied: tracking opened from 0.04em
+     so the name reads as composed rather than typed. Deliberately not a bevel
+     or a second shadow. The existing text-shadow below already does the
+     legibility work over the board, and stacking a surface effect on top of
+     it would be an effect on an effect; tracking changes the composition,
+     which is what separates a wordmark from styled text. It also rhymes with
+     the NTB Labs wordmark, itself wide-tracked caps, so product and studio
+     share a logic while differing in weight, size, and hue. Nowhere near the
+     Catan logotype, which is tight-set custom serifs. */
+  letter-spacing: 0.1em;
   color: var(--catan-gold);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-  font-size: 1rem;
+  /* Drives the whole lockup: every size inside ParentLockup is em-relative,
+     so this one value sets the product name AND the credit line under it. */
+  font-size: 1.375rem;
   padding: 6px 14px;
 }
 
@@ -66,7 +77,7 @@
     gap: 8px;
   }
   .app__title {
-    font-size: 0.8125rem;
+    font-size: 0.9375rem;
     padding: 5px 10px;
   }
   .app__seed {

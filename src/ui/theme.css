@@ -8,6 +8,12 @@
   --catan-brown-mid: #7e4e1a;
   --catan-olive: #7b7c47;
   --catan-cream: #f4e4bc;
+  /* Warm neutral for chrome that must read as "light" without reading as
+     white. Same value as --tile-desert, kept as its own token because this is
+     UI, not board art, and the two should be free to diverge. Cream sits at
+     hue 42 and lightness 85, which drifts yellow-green and reads cool beside
+     the gold; sand is hue 35, lightness 69, landing between gold and cream. */
+  --catan-sand: #d9c187;
 
   /* Hex tile fills */
   --tile-wood: #2f6b3a;

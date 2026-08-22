@@ -1,11 +1,13 @@
+import type { CSSProperties } from 'react';
 import './parentLockup.css';
 
 /** NTB Labs parent lockup: <product name> by <NTB Labs wordmark>.
  *
  *  The studio-attribution pattern shared across NTB Labs products (Catan Lab,
- *  Sift, Confide, Lucid). Product name is the headline; the attribution reads
- *  quieter. The WORDMARK is the link home; the product name links nowhere,
- *  because you are already here.
+ *  Sift, Confide, Lucid). Product name is the headline; the credit line reads
+ *  quieter, and is subordinated by SIZE first and hue second (see
+ *  parentLockup.css). The WORDMARK is the link home; the product name links
+ *  nowhere, because you are already here.
  *
  *  Reusable by design: product name, color, link target, and parent name are
  *  all props, and every internal size is em-relative, so the host sets one
@@ -35,14 +37,24 @@ export interface ParentLockupProps {
   /** Rendered as the headline. Cased by the caller, e.g. 'CATAN LAB'. */
   productName: string;
   /** Any CSS color, typically a product palette token:
-   *  color="var(--catan-gold)". Everything inside inherits it, including the
-   *  wordmark. Omit to inherit from the host. */
+   *  color="var(--catan-gold)". The product name inherits it. Omit to inherit
+   *  from the host. */
   color?: string;
+  /** Color for the credit line ("by" plus the wordmark). Defaults to white.
+   *  Deliberately a different hue from `color`: the product owns the brand
+   *  color, the studio reads as light, and the contrast is what separates
+   *  them. Pass a palette token, e.g. parentColor="var(--catan-cream)". */
+  parentColor?: string;
   /** Studio home. Exact, no www, no trailing slash. */
   parentHref?: string;
   /** Accessible name for the wordmark link, and the text after "by" for
    *  assistive tech. */
   parentName?: string;
+  /** Native tooltip on the wordmark link. Part of the affordance: the
+   *  wordmark carries no link text, so the tooltip is what confirms where it
+   *  goes for anyone who hovers before clicking. Defaults to
+   *  "Visit <parentName>". */
+  parentTitle?: string;
   /** The connective word. Swap for localization. */
   byLabel?: string;
   /** Merged onto the root, so the host can hand the lockup its own container
@@ -53,15 +65,22 @@ export interface ParentLockupProps {
 export function ParentLockup({
   productName,
   color,
+  parentColor,
   parentHref = 'https://ntblabs.dev',
   parentName = 'NTB Labs',
+  parentTitle,
   byLabel = 'by',
   className,
 }: ParentLockupProps) {
   return (
     <span
       className={className ? `lockup ${className}` : 'lockup'}
-      style={color ? { color } : undefined}
+      style={{
+        ...(color ? { color } : null),
+        ...(parentColor
+          ? ({ '--lockup-parent-color': parentColor } as CSSProperties)
+          : null),
+      }}
     >
       <span className="lockup__product">{productName}</span>
       <span className="lockup__attribution">
@@ -72,6 +91,7 @@ export function ParentLockup({
           target="_blank"
           rel="noopener noreferrer"
           aria-label={parentName}
+          title={parentTitle ?? `Visit ${parentName}`}
         >
           <svg
             className="lockup__wordmark"
