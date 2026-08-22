@@ -2,7 +2,7 @@
 
 A constraint-driven map generator for Settlers of Catan. Produces balanced boards by default, or harsh "challenge" boards that bend the math in a specific direction (scarcity of a resource, boom-or-bust concentration, low-yield dead zones). Every map is reproducible from its seed and shareable via URL.
 
-Live: <https://nathantbenke.github.io/catan-map-generator/>
+Live: <https://catan.ntblabs.dev>
 
 ## What it does
 
@@ -51,11 +51,11 @@ src/
 tests/                # Vitest unit tests for the generator
 ```
 
-## Hosting on GitHub Pages
+## Hosting
 
-`vite.config.ts` already sets `base: '/catan-map-generator/'` to match `nathantbenke.github.io/catan-map-generator/`. The included `.github/workflows/deploy.yml` builds on every push to `main` and publishes the result via GitHub Pages.
+The site is served from the custom domain `catan.ntblabs.dev` by GitHub Pages. `vite.config.ts` sets `base: '/'` because the site lives at the root of that domain. `public/CNAME` carries the domain and is copied into `dist/` on every build, which is what stops Pages from resetting the custom domain on each deploy. The included `.github/workflows/deploy.yml` builds on every push to `main` and publishes the result.
 
-To host at a different path, change `base` and the workflow will pick it up automatically.
+To host at a subpath instead, change `base` to `'/<repo-name>/'` and remove `public/CNAME`.
 
 ## Architecture notes
 

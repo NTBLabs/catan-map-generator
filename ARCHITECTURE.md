@@ -224,7 +224,7 @@ The generator has a Vitest suite (`tests/generator.test.ts`) that checks the har
 
 ## 11. Hosting / deploy
 
-GitHub Pages serves project repos at `username.github.io/<repo-name>/`. The `vite.config.ts` sets `base: '/catan-map-generator/'` to match. The `.github/workflows/deploy.yml` runs on push to `main`:
+GitHub Pages serves the site from the custom domain `catan.ntblabs.dev`, so `vite.config.ts` sets `base: '/'`. It was `'/catan-map-generator/'` while the site lived at the Pages project subpath. `public/CNAME` holds the domain and rides into `dist/` with the rest of `public/`, which is what keeps Pages from clearing the custom-domain setting on each deploy. The `.github/workflows/deploy.yml` runs on push to `main`:
 
 1. Build (`npm ci` + `npm run build`)
 2. Upload `dist/` as a Pages artifact

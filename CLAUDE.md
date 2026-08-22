@@ -19,8 +19,10 @@ Run through this before proposing or writing anything.
 4. Confirm the working tree state. It was left clean on 2026-08-22 with both
    branches pushed. See "Working tree and the stress branch" below for how the
    two tracks divide.
-5. `npm test` should report 31 passed and 4 skipped. The 4 skipped are the
-   env-gated stress harnesses, not failures.
+5. `npm test` should report 31 passed and 1 skipped on `main`. The skip is the
+   env-gated planner-bias harness, not a failure. On
+   `simulator-stress-testing` the same command reports 31 passed and 16
+   skipped, since every other harness lives there.
 6. Confirm what Nathan wants to work on before proposing work. This project sat
    untouched from 2026-06-06 to 2026-08-22, so no plan in your context is
    guaranteed current.
@@ -192,10 +194,17 @@ the system, roughly 1 second per accepted map.
 
 Deploy: `.github/workflows/deploy.yml` builds on every push to `main` (Node 20,
 `npm ci`, `npm run build`) and publishes `dist/` to GitHub Pages. The repo
-settings Pages source must be "GitHub Actions". `vite.config.ts` sets
-`base: '/catan-map-generator/'` to match the project-pages subpath. A custom
-domain migration would change that to `'/'`. Read the open questions in
-`PROJECT_BRIEF.md` before touching hosting.
+settings Pages source must be "GitHub Actions".
+
+The site is served at `https://catan.ntblabs.dev`, so `vite.config.ts` sets
+`base: '/'` and `public/CNAME` carries the domain. `public/` is copied verbatim
+into `dist/`, which is the only reason the CNAME survives a deploy. A CNAME at
+the repo root would NOT be copied and the custom domain would reset on every
+publish. If you ever move back to a Pages project subpath, `base` goes back to
+`'/<repo-name>/'` and `public/CNAME` comes out.
+
+The GitHub remote is `NTBLabs/catan-map-generator`. The repo was transferred
+from `nathantbenke` during the 2026-06 to 2026-08 gap.
 
 ## Working tree and the stress branch
 

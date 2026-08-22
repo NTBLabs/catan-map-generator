@@ -4,10 +4,10 @@
   "version": "1.0.0",
   "description": "Constraint-driven Catan map generator with balanced, fair, and challenge-mode boards. Shareable URLs, responsive mobile UI, snake-draft fairness scoring.",
   "type": "module",
-  "homepage": "https://nathantbenke.github.io/catan-map-generator/",
+  "homepage": "https://catan.ntblabs.dev",
   "repository": {
     "type": "git",
-    "url": "https://github.com/nathantbenke/catan-map-generator.git"
+    "url": "https://github.com/NTBLabs/catan-map-generator.git"
   },
   "author": "Nathan Thomas-Benke",
   "license": "MIT",

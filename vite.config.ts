@@ -3,10 +3,11 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig({
-  // GitHub Pages serves project repos at username.github.io/<repo-name>/, so
-  // every asset path needs to be prefixed with that subpath. Change to '/' if
-  // you ever host at the root of a custom domain.
-  base: '/catan-map-generator/',
+  // Served at the root of the custom domain catan.ntblabs.dev, so assets are
+  // root-relative. This was '/catan-map-generator/' while the site lived at the
+  // GitHub Pages project subpath. If the custom domain ever goes away, this has
+  // to go back to '/<repo-name>/' or every asset 404s.
+  base: '/',
   plugins: [react()],
   server: {
     host: true,
