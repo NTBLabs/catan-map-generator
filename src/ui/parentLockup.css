@@ -20,6 +20,9 @@
 .lockup {
   display: inline-flex;
   align-items: baseline;
+  /* Positioning context for the touch tap target below. Nothing is absolutely
+     positioned here on pointer devices. */
+  position: relative;
   /* Space between the product name and the credit line. Its optical partner
      is the wordmark's margin-left, which is deliberately larger. */
   gap: 0.3em;
@@ -53,7 +56,9 @@
   font-size: 0.45em;
   font-weight: 500;
   letter-spacing: 0;
-  opacity: 0.6;
+  /* Stays below the wordmark's own opacity so "by" reads as the quieter half
+     of an already-quiet line. */
+  opacity: 0.55;
 }
 
 .lockup__parent {
@@ -63,8 +68,10 @@
      cursor: this component gets dropped into hosts whose reset may have
      cleared it, and it is the cheapest half of the link affordance. */
   cursor: pointer;
-  /* Subordination is carried by size, so this is only a trim. */
-  opacity: 0.92;
+  /* Subordination is carried by size. Opacity is the trim, and it does more
+     work now that the credit line is white: white at 0.92 competed with the
+     gold headline in a way sand at 0.92 did not. Size is untouched. */
+  opacity: 0.78;
   /* The underline is a border, not text-decoration. This anchor's only child
      is an atomic inline (the SVG), and whether a text decoration paints across
      an atomic inline varies by engine; a border cannot vary. It renders at the
@@ -87,12 +94,18 @@
   }
 }
 
-/* Touch devices have no hover at all, and this is the traffic that matters
-   most for a phone-first tool. The underline is therefore always on there,
-   which is the only way the wordmark can advertise itself as a link. */
+/* Touch devices have no hover, so the affordance is a target rather than a
+   mark: the whole pill becomes tappable and goes to the studio.
+   The overlay is absolutely positioned against .lockup, which IS the pill
+   element, so inset:0 covers exactly the pill's border box and not one pixel
+   more. The header around it keeps pointer-events: none, so the board still
+   drags through everywhere the pill is not. The hit region grows from the
+   wordmark to the pill; it never grows beyond it. */
 @media (hover: none) {
-  .lockup__parent {
-    border-bottom-color: currentColor;
+  .lockup__parent::after {
+    content: '';
+    position: absolute;
+    inset: 0;
   }
 }
 
@@ -137,10 +150,17 @@
   }
 }
 
+/* The single-row and stacked layouts are switched HERE and only here: the
+   base rules above are the row, this block is the stack. Anything that should
+   not leak across the breakpoint belongs in one of the two, never both. */
 @media (max-width: 599px) {
   .lockup {
     flex-direction: column;
-    align-items: flex-start;
+    /* Cross-axis is horizontal once the direction is column, so this centers
+       the credit line under the product name. Left-aligning a narrower second
+       line under a wider first one read as an accident. The row layout above
+       keeps align-items: baseline and is untouched. */
+    align-items: center;
     gap: 0.1em;
   }
   .lockup__by {

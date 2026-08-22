@@ -47,13 +47,13 @@ export interface ParentLockupProps {
   parentColor?: string;
   /** Studio home. Exact, no www, no trailing slash. */
   parentHref?: string;
-  /** Accessible name for the wordmark link, and the text after "by" for
-   *  assistive tech. */
+  /** The studio name, rendered after "by". */
   parentName?: string;
-  /** Native tooltip on the wordmark link. Part of the affordance: the
-   *  wordmark carries no link text, so the tooltip is what confirms where it
-   *  goes for anyone who hovers before clicking. Defaults to
-   *  "Visit <parentName>". */
+  /** Accessible name AND native tooltip for the link. Defaults to
+   *  "Visit <parentName>". It names the DESTINATION rather than the studio,
+   *  because on touch the link owns the entire pill, product name included,
+   *  and "NTB Labs" alone would leave a screen-reader user unsure whether the
+   *  link goes to the studio or to the product they are already on. */
   parentTitle?: string;
   /** The connective word. Swap for localization. */
   byLabel?: string;
@@ -72,6 +72,7 @@ export function ParentLockup({
   byLabel = 'by',
   className,
 }: ParentLockupProps) {
+  const linkLabel = parentTitle ?? `Visit ${parentName}`;
   return (
     <span
       className={className ? `lockup ${className}` : 'lockup'}
@@ -90,8 +91,8 @@ export function ParentLockup({
           href={parentHref}
           target="_blank"
           rel="noopener noreferrer"
-          aria-label={parentName}
-          title={parentTitle ?? `Visit ${parentName}`}
+          aria-label={linkLabel}
+          title={linkLabel}
         >
           <svg
             className="lockup__wordmark"
