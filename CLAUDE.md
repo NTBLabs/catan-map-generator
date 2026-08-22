@@ -16,9 +16,9 @@ Run through this before proposing or writing anything.
 3. `git status` and `git branch -vv`. Two branches exist. `main` is the product.
    `simulator-stress-testing` holds the stress harnesses and their recorded
    outputs and is intentionally unmerged.
-4. Confirm the working tree state. There is uncommitted work sitting in the tree
-   (see "Uncommitted work" below). Decide with Nathan what happens to it before
-   layering new changes on top.
+4. Confirm the working tree state. It was left clean on 2026-08-22 with both
+   branches pushed. See "Working tree and the stress branch" below for how the
+   two tracks divide.
 5. `npm test` should report 31 passed and 4 skipped. The 4 skipped are the
    env-gated stress harnesses, not failures.
 6. Confirm what Nathan wants to work on before proposing work. This project sat
@@ -30,10 +30,11 @@ Run through this before proposing or writing anything.
 - **Commit only on explicit approval.** Never commit or push without Nathan
   saying so for that specific change. Proposing a commit message is fine.
   Running `git commit` unasked is not.
-- **Branch invariant.** Stay on the branch the session started on. Do not
-  create, switch, merge, rebase, or delete branches without explicit approval.
-  Every commit must be backed by a verified gate: build passes, tests pass, and
-  the specific behavior claimed has actually been checked.
+- **Branch invariant.** Anything committed is theoretically working. Every
+  commit is backed by a verified gate: the build passes, the tests pass, and the
+  specific behavior being claimed has actually been checked.
+- **Branch operations.** Stay on the branch the session started on. No create,
+  switch, merge, rebase, or delete without explicit approval.
 - **No em dashes in any writing.** Applies to commit messages, code comments,
   docs, UI copy, and chat. Use commas, colons, parentheses, or a rewrite.
 - **No `Co-Authored-By` trailers on commits.** Subject line as drafted, no
@@ -196,20 +197,25 @@ settings Pages source must be "GitHub Actions". `vite.config.ts` sets
 domain migration would change that to `'/'`. Read the open questions in
 `PROJECT_BRIEF.md` before touching hosting.
 
-## Uncommitted work in the tree
+## Working tree and the stress branch
 
-As of 2026-08-22 the working tree carries untracked files from the final
-session, all of it validation work for the two newest scenarios:
+The tree is clean. Both branches are committed and pushed.
 
-- `tests/stress-new-flavors.test.ts` with `new-flavors-output.txt` and
-  `player-balance-output.txt`
-- `tests/stress-scenario-toggles.test.ts` with `scenario-toggles-output.txt`
+`simulator-stress-testing` is a permanent parallel track and is never merged
+into `main`. Harnesses and their recorded `*-output.txt` outputs live there;
+`main` stays clean. `main` merges forward into the branch when the harnesses
+need to run against current code, never the other way around.
 
-Both report green. The scenario-toggle sweep also produced an unactioned
-finding: turning the three placement toggles off makes Rich vs Poor and Hot Zone
-dramatically cheaper to generate, up to 96 percent fewer attempts at 6 players,
-with no loss of scenario match rate. Nothing in the code acts on that yet.
+The two newest harnesses landed there on 2026-08-22 as
+`Stress: scenario flavor validation + toggle cost sweep`:
+`tests/stress-new-flavors.test.ts` with `new-flavors-output.txt` and
+`player-balance-output.txt`, and `tests/stress-scenario-toggles.test.ts` with
+`scenario-toggles-output.txt`. Both report green.
 
-`bias-output.txt` is tracked on `main`, which is inconsistent with the other
-harness outputs living on the stress branch. `.claude/` and `*.log` are
-gitignored.
+The toggle sweep left one unactioned finding: turning the three placement
+toggles off makes Rich vs Poor and Hot Zone dramatically cheaper to generate, up
+to 96 percent fewer attempts at 6 players, with no loss of scenario match rate.
+Nothing in the code acts on that yet. See section 6 of `PROJECT_BRIEF.md`.
+
+`bias-output.txt` is tracked on `main`, which is inconsistent with the pattern
+above. Known and deliberately left. `.claude/` and `*.log` are gitignored.
