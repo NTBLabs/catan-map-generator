@@ -53,6 +53,28 @@
   align-self: center;
 }
 
+/* Phone treatment. Until now the header rendered at full desktop size on every
+   viewport, permanently covering a band of the board. Phone is the likely
+   dominant case (someone setting up a game at a table), so the title pill
+   steps down and the lockup stacks to two lines (that rule lives in
+   parentLockup.css, keyed to the same 600px breakpoint). Everything inside the
+   lockup is em-relative, so this one font-size drives the whole thing,
+   wordmark included. */
+@media (max-width: 599px) {
+  .app__header {
+    padding: 8px 12px 6px;
+    gap: 8px;
+  }
+  .app__title {
+    font-size: 0.8125rem;
+    padding: 5px 10px;
+  }
+  .app__seed {
+    font-size: 0.6875rem;
+    padding: 5px 10px;
+  }
+}
+
 .app__board {
   position: absolute;
   inset: 0;
@@ -281,6 +303,26 @@
 }
 .controls__group:last-of-type {
   border-bottom: none;
+}
+
+/* Drawer footer: the low-emphasis home for secondary links. Sized and colored
+   to sit below the help text in the reading order, not compete with it. */
+.controls__footer {
+  margin: 14px 4px 2px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(125, 75, 30, 0.25);
+}
+.controls__source {
+  font-size: 0.75rem;
+  color: var(--catan-brown-mid);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(125, 75, 30, 0.35);
+  opacity: 0.85;
+}
+.controls__source:hover,
+.controls__source:focus-visible {
+  opacity: 1;
+  color: var(--catan-brown-dark);
 }
 
 .help {

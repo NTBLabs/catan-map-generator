@@ -605,6 +605,21 @@ export function Controls() {
         {showAdvancedDiagnostics && scored && <AdvancedDiagnosticsPanel />}
       </div>
 
+      {/* Drawer footer. Deliberately the quietest thing in the panel and
+          deliberately NOT in the header: the header carries one link home to
+          the studio, and this is a second destination that only a small
+          fraction of visitors want. */}
+      <footer className="controls__footer">
+        <a
+          className="controls__source"
+          href="https://github.com/NTBLabs/catan-map-generator"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Source on GitHub
+        </a>
+      </footer>
+
       </div>
     </aside>
   );

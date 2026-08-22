@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Board } from './ui/Board';
 import { Controls } from './ui/Controls';
+import { ParentLockup } from './ui/ParentLockup';
 import { useAppStore } from './state/store';
 import './ui/app.css';
 
@@ -22,7 +23,11 @@ export function App() {
   return (
     <div className="app">
       <header className="app__header">
-        <span className="app__title">CATAN LAB</span>
+        <ParentLockup
+          productName="CATAN LAB"
+          color="var(--catan-gold)"
+          className="app__title"
+        />
         {seed !== undefined && <span className="app__seed">seed: {seed.toString(36)}</span>}
       </header>
       <Board />
