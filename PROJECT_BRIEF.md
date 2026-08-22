@@ -1,4 +1,4 @@
-# PROJECT_BRIEF.md - Catan Map Generator
+# PROJECT_BRIEF.md - Catan Lab
 
 Reconstructed history and current state, assembled 2026-08-22 from git history,
 the code itself, and the surviving project memory files. Written so a planning
@@ -443,6 +443,19 @@ how much downstream work they block.
    Lab". `package.json`, `README.md`, and the in-app header all say "Catan Map
    Generator". The portfolio plan calls it "Catan Lab Generator". Which name is
    the product name, and does it change before or after the hosting move?
+
+   **Answered 2026-08-22.** The product name is **Catan Lab**, singular. Not
+   "Catan Labs", not "Catan Map Generator", not "Catan Lab Generator". It was
+   applied to every user-facing surface: the page title, all Open Graph and
+   Twitter tags, the JSON-LD name, the OG image headline, the in-app header,
+   and the PNG export watermark. The name change came after the hosting move,
+   which was itself resolved the same day (see question 1).
+
+   The repository name does **not** change and stays
+   `NTBLabs/catan-map-generator`. The npm package name in `package.json` stays
+   `catan-map-generator` to match it. Renaming the repo would break the GitHub
+   Pages path that existing share links resolve through, and every link Nathan
+   has already sent out is a permanent URL.
 
 3. **The scenario-toggle finding.** Section 6. Force the toggles off in scenario
    mode, expose a "fast mode", or leave it as documented behavior?

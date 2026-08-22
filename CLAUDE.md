@@ -1,4 +1,4 @@
-# CLAUDE.md - Catan Map Generator
+# CLAUDE.md - Catan Lab
 
 Working context for this repo. Read this first, then `PROJECT_BRIEF.md` for the
 reconstructed history, the decisions behind the algorithm, and the open

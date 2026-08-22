@@ -2,7 +2,7 @@
   "name": "catan-map-generator",
   "private": true,
   "version": "1.0.0",
-  "description": "Constraint-driven Catan map generator with balanced, fair, and challenge-mode boards. Shareable URLs, responsive mobile UI, snake-draft fairness scoring.",
+  "description": "Constraint-driven balanced board generator for Catan.",
   "type": "module",
   "homepage": "https://catan.ntblabs.dev",
   "repository": {

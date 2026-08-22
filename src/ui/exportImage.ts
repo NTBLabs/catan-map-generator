@@ -16,7 +16,7 @@
 // Everything is self-contained (no external fonts/images), so the canvas never
 // gets tainted and toBlob() works even on iOS Safari.
 
-const WATERMARK = 'Catan Map Generator';
+const WATERMARK = 'Catan Lab';
 
 // Presentation properties worth carrying over. Deliberately excludes width /
 // height / transform / transform-origin / will-change so the clone's own

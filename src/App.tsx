@@ -22,7 +22,7 @@ export function App() {
   return (
     <div className="app">
       <header className="app__header">
-        <span className="app__title">CATAN MAP GENERATOR</span>
+        <span className="app__title">CATAN LAB</span>
         {seed !== undefined && <span className="app__seed">seed: {seed.toString(36)}</span>}
       </header>
       <Board />

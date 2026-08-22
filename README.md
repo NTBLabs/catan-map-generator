@@ -1,4 +1,4 @@
-# Catan Map Generator
+# Catan Lab
 
 A constraint-driven map generator for Settlers of Catan. Produces balanced boards by default, or harsh "challenge" boards that bend the math in a specific direction (scarcity of a resource, boom-or-bust concentration, low-yield dead zones). Every map is reproducible from its seed and shareable via URL.
 

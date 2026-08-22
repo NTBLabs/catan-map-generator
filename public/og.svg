@@ -84,20 +84,19 @@
     </g>
   </g>
 
-  <!-- Title block (right two-thirds). Title sized to fit "GENERATOR" at
-       this letter-spacing within ~480px right of the hex cluster, with
-       safety margin on the right edge. -->
-  <g transform="translate(600, 240)">
+  <!-- Title block (right two-thirds). "CATAN LAB" sets on one line at this
+       size and letter-spacing well inside the ~480px right of the hex
+       cluster. The group's y was 240 when the title wrapped to two lines;
+       at 277 the shorter block keeps the same optical center (~323). -->
+  <g transform="translate(600, 277)">
     <text x="0" y="0" font-family="Georgia, 'Times New Roman', serif"
-          font-weight="900" font-size="66" fill="#da954b" letter-spacing="1">CATAN MAP</text>
-    <text x="0" y="74" font-family="Georgia, 'Times New Roman', serif"
-          font-weight="900" font-size="66" fill="#da954b" letter-spacing="1">GENERATOR</text>
+          font-weight="900" font-size="66" fill="#da954b" letter-spacing="1">CATAN LAB</text>
 
-    <text x="0" y="144" font-family="-apple-system, Segoe UI, Helvetica, sans-serif"
+    <text x="0" y="70" font-family="-apple-system, Segoe UI, Helvetica, sans-serif"
           font-size="22" font-weight="600" fill="#f4e4bc" opacity="0.92">Constraint-driven boards</text>
-    <text x="0" y="176" font-family="-apple-system, Segoe UI, Helvetica, sans-serif"
+    <text x="0" y="102" font-family="-apple-system, Segoe UI, Helvetica, sans-serif"
           font-size="22" font-weight="600" fill="#f4e4bc" opacity="0.92">Snake-draft fairness scoring</text>
-    <text x="0" y="208" font-family="-apple-system, Segoe UI, Helvetica, sans-serif"
+    <text x="0" y="134" font-family="-apple-system, Segoe UI, Helvetica, sans-serif"
           font-size="22" font-weight="600" fill="#f4e4bc" opacity="0.92">Base game · 5–6 expansion · Shareable URLs</text>
   </g>
 
