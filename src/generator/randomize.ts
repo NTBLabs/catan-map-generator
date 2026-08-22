@@ -1,6 +1,6 @@
 import { boardFor, HIGH_YIELD_NUMBERS, RED_NUMBERS } from '../game/constants';
 import { buildEmptyLayout, buildHexIndex, hexNeighbors } from '../game/layout';
-import type { Hex, PlayerCount, Port, PortType, Resource, Variants } from '../game/types';
+import type { Hex, PlayerCount, Port, PortType, Resource, Variants, WealthGapTarget } from '../game/types';
 import { shuffle } from './random';
 
 export interface RandomizedMap {
@@ -35,9 +35,12 @@ function placeResources(
   bag: Resource[],
   rng: () => number,
   strict: boolean,
+  wealthGapTarget?: WealthGapTarget,
 ): boolean {
+  const MAX_DESERTS_ON_RICH = 1;
   const order = shuffle(hexes.map((_, i) => i), rng);
   const remaining: Resource[] = bag.slice();
+  let desertsOnRich = 0;
   for (const idx of order) {
     const hex = hexes[idx];
     const byKey = buildHexIndex(hexes);
@@ -57,8 +60,29 @@ function placeResources(
         return false;
       }
     }
-    const chosenPos = candidatesIdx[Math.floor(rng() * candidatesIdx.length)];
-    hex.resource = remaining[chosenPos];
+    // wealthGap targeting: keep deserts off the rich side.
+    //   - Soft rule (desertsOnRich < MAX): filter out desert IF non-desert
+    //     options exist. Random fall-through allowed.
+    //   - Hard rule (desertsOnRich >= MAX): strictly forbid desert on rich.
+    //     If no non-desert options exist, fail the placement so the main
+    //     loop retries with a fresh order.
+    let pool = candidatesIdx;
+    const onRich = wealthGapTarget && wealthGapSide(hex, wealthGapTarget) === 'rich';
+    if (onRich) {
+      const nonDesert = pool.filter(i => remaining[i] !== 'desert');
+      const atCap = desertsOnRich >= MAX_DESERTS_ON_RICH;
+      if (nonDesert.length > 0) {
+        pool = nonDesert;
+      } else if (atCap) {
+        // Already at the rich-side desert quota and no other option — bail.
+        return false;
+      }
+      // else: under cap, no non-desert options → fall through to allow desert.
+    }
+    const chosenPos = pool[Math.floor(rng() * pool.length)];
+    const chosenRes = remaining[chosenPos];
+    if (onRich && chosenRes === 'desert') desertsOnRich++;
+    hex.resource = chosenRes;
     remaining.splice(chosenPos, 1);
   }
   return true;
@@ -80,6 +104,50 @@ interface PlaceNumbersOpts {
   noSameNumberAdjacent: boolean;
   noSameNumberOnResource: boolean;
   noMultipleRedsOnResource: boolean;
+  /** Relax the "no red adjacency" placement rule. Used only by the hotZone
+   *  challenge flavor — the whole point is reds clustering. */
+  allowRedAdjacency?: boolean;
+  /** wealthGap target axis + side. When set, placement biases high-pip
+   *  numbers (4/5/6/8/9/10) toward the rich side and low-pip numbers
+   *  (2/3/11/12) toward the dividing line, falling back to sparse side.
+   *  Low-pip never lands on rich side except as last resort. */
+  wealthGapTarget?: WealthGapTarget;
+}
+
+const HIGH_PIP_NUMBERS = new Set([4, 5, 6, 8, 9, 10]);
+
+function wealthGapAxisCoord(hex: Hex, axis: 'q' | 'r' | 's'): number {
+  if (axis === 'q') return hex.q;
+  if (axis === 'r') return hex.r;
+  return -hex.q - hex.r;
+}
+
+/** Returns the 'rich' / 'div' / 'sparse' side of a hex relative to the
+ *  wealthGap target. 'div' = on the dividing line (axis coord == 0). */
+function wealthGapSide(hex: Hex, target: WealthGapTarget): 'rich' | 'div' | 'sparse' {
+  const c = wealthGapAxisCoord(hex, target.axis);
+  if (c === 0) return 'div';
+  const sign: 1 | -1 = c > 0 ? 1 : -1;
+  return sign === target.richSide ? 'rich' : 'sparse';
+}
+
+/** Filters candidate slots by wealthGap preference. High-pip numbers prefer
+ *  the rich side (then div, then sparse). Low-pip numbers prefer the div
+ *  (dividing line) first, then sparse, NEVER rich unless no other option. */
+function wealthGapPreferred(candidates: Hex[], num: number, target: WealthGapTarget): Hex[] {
+  if (HIGH_PIP_NUMBERS.has(num)) {
+    const rich = candidates.filter(s => wealthGapSide(s, target) === 'rich');
+    if (rich.length > 0) return rich;
+    const div = candidates.filter(s => wealthGapSide(s, target) === 'div');
+    if (div.length > 0) return div;
+    return candidates;
+  } else {
+    const div = candidates.filter(s => wealthGapSide(s, target) === 'div');
+    if (div.length > 0) return div;
+    const sparse = candidates.filter(s => wealthGapSide(s, target) === 'sparse');
+    if (sparse.length > 0) return sparse;
+    return candidates; // forced fallback — predicate will reject, attempt loop retries
+  }
 }
 
 function placeNumbers(
@@ -130,7 +198,7 @@ function placeNumbers(
     const candidates = slots.filter(s => {
       if (s.number !== null) return false;
       const ns = hexNeighbors(s, byKey);
-      if (isRed && ns.some(n => n.number !== null && RED_NUMBERS.has(n.number))) return false;
+      if (!opts.allowRedAdjacency && isRed && ns.some(n => n.number !== null && RED_NUMBERS.has(n.number))) return false;
       if (violatesTripleHighYield(s, num, hexes)) return false;
       if (opts.noSameNumberAdjacent && ns.some(n => n.number === num)) return false;
       if (opts.noSameNumberOnResource && resourcesAlreadyWithNum.has(s.resource)) return false;
@@ -167,6 +235,14 @@ function placeNumbers(
     const uniqueOnResource = pool.filter(c => !resourcesAlreadyWithNum.has(c.resource));
     if (uniqueOnResource.length > 0) pool = uniqueOnResource;
 
+    // wealthGap targeting: high-yield numbers (all >= 4 pips) belong on the
+    // rich side. Falls through to the broader pool if no rich-side slot is
+    // available — predicate rejection then triggers a retry.
+    if (opts.wealthGapTarget) {
+      const preferred = wealthGapPreferred(pool, num, opts.wealthGapTarget);
+      if (preferred.length > 0) pool = preferred;
+    }
+
     const chosen = pool[Math.floor(rng() * pool.length)];
     chosen.number = num;
   }
@@ -188,8 +264,20 @@ function placeNumbers(
       if (opts.noSameNumberOnResource && sameNumOnResource.has(s.resource)) return false;
       return true;
     };
-    let target = remainingSlots.find(s => validStrict(s) && !sameNumOnResource.has(s.resource));
-    if (!target) target = remainingSlots.find(validStrict);
+    // wealthGap targeting: walk preferred side first, then fall through.
+    // Low-pip numbers (2/3/11/12) prefer dividing line, then sparse side,
+    // and only land on rich as a true last resort (which the strict
+    // findWealthGapAxis predicate will then reject, triggering a retry).
+    const preferredOrder = opts.wealthGapTarget
+      ? wealthGapPreferred(remainingSlots, num, opts.wealthGapTarget)
+      : remainingSlots;
+    let target = preferredOrder.find(s => validStrict(s) && !sameNumOnResource.has(s.resource));
+    if (!target) target = preferredOrder.find(validStrict);
+    if (!target && opts.wealthGapTarget) {
+      // Fall back to ALL remaining slots if preferred side has no valid candidate.
+      target = remainingSlots.find(s => validStrict(s) && !sameNumOnResource.has(s.resource));
+      if (!target) target = remainingSlots.find(validStrict);
+    }
     if (!target && !opts.noSameNumberOnResource) target = remainingSlots.find(validSoft);
     if (!target) return false;
     target.number = num;
@@ -245,6 +333,7 @@ export function randomizeMap(
   variants: Variants,
   rng: () => number,
   spreadMode?: SpreadHighYieldMode,
+  wealthGapTarget?: WealthGapTarget,
 ): RandomizedMap {
   const { resourceCounts, numberCounts } = adjustForVariants(playerCount, variants);
   const layout = buildEmptyLayout(playerCount);
@@ -261,32 +350,46 @@ export function randomizeMap(
   let placedStrictly = false;
   for (let strictTry = 0; strictTry < 8; strictTry++) {
     for (const h of hexes) h.resource = 'desert';
-    if (placeResources(hexes, resourceBag, rng, true)) {
+    if (placeResources(hexes, resourceBag, rng, true, wealthGapTarget)) {
       placedStrictly = true;
       break;
     }
   }
   if (!placedStrictly) {
     for (const h of hexes) h.resource = 'desert';
-    placeResources(hexes, resourceBag, rng, false);
+    placeResources(hexes, resourceBag, rng, false, wealthGapTarget);
   }
 
   // Defensive sanity check: the resource counts on the board MUST match the
   // bag. If they don't, force a non-strict placement (which always finishes).
   if (!countsMatchBag(hexes, resourceCounts)) {
     for (const h of hexes) h.resource = 'desert';
-    placeResources(hexes, resourceBag, rng, false);
+    placeResources(hexes, resourceBag, rng, false, wealthGapTarget);
   }
 
+  // High-yield spread strategy per scenario:
+  // - Balanced (none): default 'byCount' (or experimental override)
+  // - Rich vs Poor / Hot Zone: 'byRate' — equalize per-tile high-yield rate,
+  //   which inherently biases reds/9s/5s onto the 3-tile resources (brick,
+  //   ore) so they're not proportionally starved. Hot Zone's cluster
+  //   concentrates pip mass on whatever resources sit at the cluster
+  //   coordinates; without spread, the non-cluster 3-tile resources end up
+  //   with no reds AND no high non-reds, failing the per-tile pip floor.
+  // - Scarcity / Boom-or-bust / Drought: 'off' — their identity REQUIRES
+  //   the freedom to starve/concentrate resources arbitrarily.
+  const spreadForScenario =
+    variants.challenge.flavor === 'none' ? (spreadMode ?? 'byCount') :
+    variants.challenge.flavor === 'wealthGap' || variants.challenge.flavor === 'hotZone' ? 'byRate' :
+    'off';
   placeNumbers(hexes, numberBag, rng, {
-    // Only enforce the "spread high-yield across resources" preference in
-    // balanced mode. Challenge mode needs the freedom to produce starved or
-    // concentrated resources naturally. Default mode preserves legacy
-    // behavior (byCount); experiments may override via spreadMode.
-    spreadHighYield: variants.challenge.flavor === 'none' ? (spreadMode ?? 'byCount') : 'off',
+    spreadHighYield: spreadForScenario,
     noSameNumberAdjacent: variants.noSameNumberAdjacent,
     noSameNumberOnResource: variants.noSameNumberOnResource,
     noMultipleRedsOnResource: variants.noMultipleRedsOnResource,
+    // Both 'hotZone' and 'random' may eventually require a hot-zone match
+     // (random rolls hotZone with 1/5 odds), so placement loosens for both.
+    allowRedAdjacency: variants.challenge.flavor === 'hotZone' || variants.challenge.flavor === 'random',
+    wealthGapTarget,
   });
 
   const ports = placePorts(layout.perimeterPortSlots, boardFor(playerCount).portTypes, rng, variants.shufflePorts);

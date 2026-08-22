@@ -6,6 +6,10 @@ export interface ConstraintOptions {
   noSameNumberAdjacent: boolean;
   noSameNumberOnResource: boolean;
   noMultipleRedsOnResource: boolean;
+  /** Relax the always-on "no two red numbers adjacent" rule. Used only by
+   *  the hotZone challenge flavor where the whole point is reds clustering
+   *  into a contested zone. Off for every other generation path. */
+  allowRedAdjacency?: boolean;
 }
 
 export function checkHardConstraints(
@@ -30,6 +34,7 @@ export function checkHardConstraints(
         return { ok: false, reason: `same-resource adjacency ${hex.id}-${n.id}` };
       }
       if (
+        !opts.allowRedAdjacency &&
         hex.number !== null &&
         n.number !== null &&
         RED_NUMBERS.has(hex.number) &&

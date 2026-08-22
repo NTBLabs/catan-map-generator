@@ -276,15 +276,16 @@ export function PortGlyph({ type, size = 1 }: { type: PortType; size?: number })
     );
   }
   switch (type) {
-    case 'wood':  return <Tree x={0} y={0.04} scale={1.1 * size} tone={1} />;
-    case 'brick': return <BrickStack x={-0.03} y={-0.04} scale={0.95 * size} />;
+    case 'wood':  return <Tree x={0} y={0.04} scale={1.05 * size} tone={1} />;
+    case 'brick': return <BrickStack x={-0.01} y={-0.04} scale={0.9 * size} />;
     case 'wheat': return <WheatStalk x={0} y={0.02} scale={1.2 * size} />;
-    case 'sheep': return <Sheep x={-0.03} y={0} scale={0.95 * size} />;
+    case 'sheep': return <Sheep x={-0.01} y={-0.01} scale={0.82 * size} />;
     case 'ore': {
+      // Symmetric, centred peak (the old one was small and offset).
       return (
-        <g transform={`translate(0 ${0.04}) scale(${0.65 * size})`}>
-          <polygon points="-0.30,0.20 -0.05,-0.25 0.18,0.20" fill="#5b6270" stroke="#1f242c" strokeWidth={0.025} />
-          <polygon points="-0.10,-0.10 -0.05,-0.25 0.00,-0.10" fill="#ffffff" />
+        <g transform={`translate(0 -0.02) scale(${0.85 * size})`}>
+          <polygon points="-0.24,0.18 0,-0.26 0.24,0.18" fill="#5b6270" stroke="#1f242c" strokeWidth={0.025} />
+          <polygon points="-0.07,-0.06 0,-0.26 0.07,-0.06" fill="#ffffff" />
         </g>
       );
     }

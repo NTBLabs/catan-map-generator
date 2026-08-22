@@ -1,8 +1,22 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useGesture } from '@use-gesture/react';
 import { useAppStore } from '../state/store';
 import { PRODUCING_RESOURCES } from '../game/constants';
 import type { ChallengeFlavor, PlayerCount, ProducingResource } from '../game/types';
+import { downloadBoardImage } from './exportImage';
+import {
+  CheckIcon,
+  CloseIcon,
+  DownloadIcon,
+  LinkIcon,
+  MailIcon,
+  MoreIcon,
+  RedditIcon,
+  ShareIcon,
+  TelegramIcon,
+  WhatsAppIcon,
+} from './icons';
 
 const MOBILE_QUERY = '(max-width: 899px)';
 // Height of the peek (handle) row when the drawer is collapsed. The
@@ -15,6 +29,8 @@ const PLAYER_COUNTS: PlayerCount[] = [3, 4, 5, 6];
 
 const FLAVOR_LABELS: Record<ChallengeFlavor, string> = {
   none: 'None (balanced)',
+  hotZone: 'Hot zone',
+  wealthGap: 'Rich vs Poor',
   scarcity: 'Scarcity',
   boomOrBust: 'Boom-or-bust',
   drought: 'Drought',
@@ -26,7 +42,9 @@ const FLAVOR_HELP: Record<ChallengeFlavor, string> = {
   scarcity: 'The target resource will have very low total yield — it stays rare all game. Pick which resource (or "Any") below.',
   boomOrBust: 'The target resource gets ~60%+ of its pips on a single number. When that number rolls, payday. When it doesn\'t, drought.',
   drought: 'At least one cluster of 3 adjacent hexes all carry low-yield numbers (2/3/11/12) — a "dead zone" you have to plan around.',
-  random: 'Picks one of Scarcity / Boom-or-bust / Drought at random. The Analyze view shows which one rolled.',
+  wealthGap: 'One half of the board is RICH (every number 4+ pips), the other half is POOR. A territory war for the good side; the poor side is a slog.',
+  hotZone: 'Four+ red numbers (6/8) cluster into one contested region — both the dream apex pick and the constant robber target.',
+  random: 'Picks one of Scarcity / Boom-or-bust / Drought / Rich vs Poor / Hot zone at random. The Analyze view shows which one rolled.',
 };
 
 export function Controls() {
@@ -34,6 +52,7 @@ export function Controls() {
   const variants = useAppStore(s => s.variants);
   const showBestLocations = useAppStore(s => s.showBestLocations);
   const showResourceHealth = useAppStore(s => s.showResourceHealth);
+  const showAdvancedDiagnostics = useAppStore(s => s.showAdvancedDiagnostics);
   const waterFrame = useAppStore(s => s.waterFrame);
   const map = useAppStore(s => s.map);
   const scored = useAppStore(s => s.scored);
@@ -46,11 +65,29 @@ export function Controls() {
   const setChallenge = useAppStore(s => s.setChallenge);
   const toggleShowBestLocations = useAppStore(s => s.toggleShowBestLocations);
   const toggleShowResourceHealth = useAppStore(s => s.toggleShowResourceHealth);
+  const toggleShowAdvancedDiagnostics = useAppStore(s => s.toggleShowAdvancedDiagnostics);
   const toggleWaterFrame = useAppStore(s => s.toggleWaterFrame);
   const generate = useAppStore(s => s.generate);
 
   const showTargetPicker =
     variants.challenge.flavor === 'scarcity' || variants.challenge.flavor === 'boomOrBust';
+
+  // Share popover: one icon button opens a small menu with "Copy link" and
+  // "Save / share image". Closes on outside-click, Escape, or shortly after an
+  // action so its inline feedback ("Link copied!", "Saved!") stays visible.
+  const [shareMenuOpen, setShareMenuOpen] = useState(false);
+  // Close on Escape. Outside-tap is handled by the scrim overlay itself (the
+  // menu is portaled to <body> so it escapes the drawer's CSS transform, which
+  // would otherwise anchor a fixed/absolute child to the drawer and push the
+  // popover off-screen).
+  useEffect(() => {
+    if (!shareMenuOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShareMenuOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [shareMenuOpen]);
 
   const [shareStatus, setShareStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
   useEffect(() => {
@@ -66,6 +103,68 @@ export function Controls() {
       console.warn('clipboard write failed', err);
       setShareStatus('failed');
     }
+    window.setTimeout(() => setShareMenuOpen(false), 1200);
+  };
+
+  // Image download. Always forces a file download (never the OS share sheet) —
+  // a "Download" action should just download. Status drives the bubble's
+  // spinner/checkmark feedback.
+  const [imageStatus, setImageStatus] = useState<'idle' | 'busy' | 'saved' | 'failed'>('idle');
+  useEffect(() => {
+    if (imageStatus === 'idle' || imageStatus === 'busy') return;
+    const t = window.setTimeout(() => setImageStatus('idle'), 2000);
+    return () => window.clearTimeout(t);
+  }, [imageStatus]);
+  const onSaveImage = async () => {
+    if (imageStatus === 'busy') return;
+    setImageStatus('busy');
+    try {
+      const seed = map?.seed;
+      await downloadBoardImage({
+        filename: seed !== undefined ? `catan-map-${seed.toString(36)}.png` : 'catan-map.png',
+        seedLabel: seed !== undefined ? `seed: ${seed.toString(36)}` : undefined,
+      });
+      setImageStatus('saved');
+    } catch (err) {
+      console.warn('image download failed', err);
+      setImageStatus('failed');
+    }
+    window.setTimeout(() => setShareMenuOpen(false), 1200);
+  };
+  // Share data. The native share sheet (below) is the primary path on mobile —
+  // it reaches iMessage, Instagram, Snapchat, Discord, Slack, and iOS's
+  // suggested-chats row, none of which expose a public link-intent URL. The
+  // direct buttons are only for apps that DO publish a share URL (WhatsApp,
+  // Telegram) plus email, and double as the desktop fallback. Built in render
+  // so the URL always reflects the current map.
+  const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
+  const shareTitle = 'Catan map';
+  const shareText = 'Check out this Catan map';
+  const enc = encodeURIComponent;
+  const shareTargets: Array<{
+    key: string; label: string; href: string; Icon: typeof WhatsAppIcon;
+    color?: string; blank?: boolean; ghost?: boolean; ring?: boolean;
+  }> = [
+    { key: 'whatsapp', label: 'WhatsApp', color: '#25D366', Icon: WhatsAppIcon, blank: true,
+      href: `https://wa.me/?text=${enc(`${shareText} ${shareUrl}`)}` },
+    { key: 'telegram', label: 'Telegram', color: '#26A5E4', Icon: TelegramIcon, blank: true,
+      href: `https://t.me/share/url?url=${enc(shareUrl)}&text=${enc(shareText)}` },
+    { key: 'reddit', label: 'Reddit', color: '#FF4500', Icon: RedditIcon, blank: true,
+      href: `https://www.reddit.com/submit?url=${enc(shareUrl)}&title=${enc(shareTitle)}` },
+    { key: 'email', label: 'Email', color: '#2f55c7', Icon: MailIcon, ring: true,
+      href: `mailto:?subject=${enc(shareTitle)}&body=${enc(`${shareText}\n\n${shareUrl}`)}` },
+  ];
+
+  const canNativeShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
+  const onNativeShare = async () => {
+    try {
+      await navigator.share({ title: shareTitle, text: shareText, url: shareUrl });
+    } catch (err) {
+      if (!(err instanceof DOMException && err.name === 'AbortError')) {
+        console.warn('native share failed', err);
+      }
+    }
+    setShareMenuOpen(false);
   };
 
   // Mobile drawer state. On phones the drawer starts closed; the user can
@@ -168,17 +267,130 @@ export function Controls() {
 
       <div className="controls__row controls__row--primary">
         <button className="btn btn--primary" onClick={generate} disabled={generating}>
-          {generating ? 'Generating…' : 'Generate map'}
+          {generating ? (
+            <>
+              <span className="spinner" aria-hidden="true" />
+              Generating…
+            </>
+          ) : (
+            'Generate map'
+          )}
         </button>
-        <button
-          className={`btn btn--secondary ${shareStatus === 'copied' ? 'btn--success' : ''} ${shareStatus === 'failed' ? 'btn--warn' : ''}`}
-          onClick={onShare}
-          disabled={!map}
-          aria-live="polite"
-        >
-          {shareStatus === 'copied' ? 'Link copied!' : shareStatus === 'failed' ? 'Copy failed' : 'Share'}
-        </button>
+        <div className="share">
+          <button
+            type="button"
+            className="btn btn--secondary share__btn"
+            onClick={() => setShareMenuOpen(o => !o)}
+            disabled={!map}
+            aria-haspopup="menu"
+            aria-expanded={shareMenuOpen}
+            aria-label="Share"
+            title="Share"
+          >
+            <ShareIcon />
+          </button>
+        </div>
       </div>
+
+      {shareMenuOpen && map && createPortal(
+        <div
+          className="share-overlay"
+          role="presentation"
+          onClick={() => setShareMenuOpen(false)}
+        >
+          <div
+            className="share-sheet"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Share"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="share-sheet__header">
+              <span className="share-sheet__title">Share</span>
+              <button
+                type="button"
+                className="share-sheet__close"
+                onClick={() => setShareMenuOpen(false)}
+                aria-label="Close"
+              >
+                <CloseIcon />
+              </button>
+            </div>
+
+            <div className="share-targets">
+              <button
+                type="button"
+                className="share-target"
+                onClick={onShare}
+                aria-live="polite"
+              >
+                <span
+                  className={`share-target__icon${shareStatus === 'copied' ? '' : ' share-target__icon--util'}`}
+                  style={shareStatus === 'copied' ? { background: '#6fa84a', borderColor: '#3d6a26', color: '#fff' } : undefined}
+                >
+                  {shareStatus === 'copied' ? <CheckIcon /> : <LinkIcon />}
+                </span>
+                <span className="share-target__label">
+                  {shareStatus === 'copied' ? 'Copied!' : shareStatus === 'failed' ? 'Failed' : 'Copy link'}
+                </span>
+              </button>
+
+              {shareTargets.map(t => (
+                <a
+                  key={t.key}
+                  className="share-target"
+                  href={t.href}
+                  {...(t.blank ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                  onClick={() => setShareMenuOpen(false)}
+                >
+                  <span
+                    className={`share-target__icon${t.ghost ? ' share-target__icon--ghost' : ''}`}
+                    style={t.ghost ? undefined : { background: t.color, ...(t.ring ? { border: '2px solid var(--catan-gold)' } : {}) }}
+                  >
+                    <t.Icon />
+                  </span>
+                  <span className="share-target__label">{t.label}</span>
+                </a>
+              ))}
+
+              <button
+                type="button"
+                className="share-target"
+                onClick={onSaveImage}
+                disabled={imageStatus === 'busy'}
+                aria-live="polite"
+              >
+                <span
+                  className={`share-target__icon${imageStatus === 'saved' ? '' : ' share-target__icon--ghost'}`}
+                  style={imageStatus === 'saved' ? { background: '#6fa84a', borderColor: '#3d6a26', color: '#fff' } : undefined}
+                >
+                  {imageStatus === 'busy'
+                    ? <span className="spinner" aria-hidden="true" />
+                    : imageStatus === 'saved'
+                      ? <CheckIcon />
+                      : <DownloadIcon />}
+                </span>
+                <span className="share-target__label">
+                  {imageStatus === 'busy' ? 'Saving…'
+                    : imageStatus === 'saved' ? 'Saved!'
+                      : imageStatus === 'failed' ? 'Failed'
+                        : 'Download'}
+                </span>
+              </button>
+
+              {canNativeShare && (
+                <button type="button" className="share-target" onClick={onNativeShare}>
+                  <span className="share-target__icon share-target__icon--ghost">
+                    <MoreIcon />
+                  </span>
+                  <span className="share-target__label">More</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
 
       {fellBack && map && (
         <div className="notice notice--warn">
@@ -203,9 +415,9 @@ export function Controls() {
           </label>
         </div>
         <p className="help">
-          Adds a per-resource health readout (pip totals, concentration, healthy/warning/unhealthy dot) plus the simulated snake-draft fairness panel.
+          Per-resource health readout (pip totals, concentration, healthy/warning/unhealthy dot) plus the simulated snake-draft fairness panel.
         </p>
-        {showResourceHealth && scored && <AnalyzePanel />}
+        {showResourceHealth && scored && <ResourceHealthPanel />}
       </div>
 
       <div className="controls__row">
@@ -380,12 +592,28 @@ export function Controls() {
         </p>
       </div>
 
+      <div className="controls__group">
+        <div className="controls__row">
+          <label className="toggle">
+            <input type="checkbox" checked={showAdvancedDiagnostics} onChange={toggleShowAdvancedDiagnostics} />
+            Show advanced diagnostics
+          </label>
+        </div>
+        <p className="help">
+          Deeper analysis: adjacent-resource pair frequencies, strategic-viability bar, top-20 archetype mix, top port-economy openings, and port hinterland support.
+        </p>
+        {showAdvancedDiagnostics && scored && <AdvancedDiagnosticsPanel />}
+      </div>
+
       </div>
     </aside>
   );
 }
 
-function AnalyzePanel() {
+/** Top row (per-resource pip totals + health dots) plus the bottom
+ *  fairness panel (stdev/spread/mean/player bars). Gated by the
+ *  "Show resource distribution" toggle. */
+function ResourceHealthPanel() {
   const scored = useAppStore(s => s.scored)!;
   const fairness = scored.fairness;
   const mean = fairness.playerTotals.reduce((a, b) => a + b, 0) / fairness.playerTotals.length;
@@ -395,15 +623,13 @@ function AnalyzePanel() {
     <>
       <div className="health">
         {scored.health.map(h => {
-          // Production share delta vs. expected (tile-count) share.
-          // 0 → producing exactly its fair share; ±20% → meaningful skew.
           const shareDelta = h.expectedShare > 0
             ? (h.productionShare / h.expectedShare - 1) * 100
             : 0;
           const deltaSign = shareDelta > 0 ? '+' : '';
           return (
             <div className="health__cell" key={h.resource}>
-              <div>
+              <div className="health__cell-head">
                 <span className={`health__dot health__dot--${h.status}`} />
                 {h.resource}
               </div>
@@ -411,10 +637,7 @@ function AnalyzePanel() {
               <div style={{ opacity: 0.7 }} title="concentration on top number">
                 {(h.concentration * 100).toFixed(0)}%
               </div>
-              <div
-                className="health__share"
-                title="production share vs expected (tile-count share)"
-              >
+              <div className="health__share" title="production share vs expected (tile-count share)">
                 {deltaSign}{shareDelta.toFixed(0)}%
               </div>
             </div>
@@ -422,6 +645,60 @@ function AnalyzePanel() {
         })}
       </div>
 
+      <div className="fairness">
+        <div className="fairness__row">
+          <span>Stdev</span>
+          <span>{fairness.stdev.toFixed(2)}</span>
+        </div>
+        <div className="fairness__row">
+          <span>Spread</span>
+          <span>{fairness.spread.toFixed(2)}</span>
+        </div>
+        <div className="fairness__row">
+          <span>Mean</span>
+          <span>{mean.toFixed(2)}</span>
+        </div>
+        <div className="fairness__row" title="Min roads from any picked spot to any port, per player">
+          <span>Port reach</span>
+          <span>
+            {scored.playerPortDistance.map((d, i) =>
+              `P${i + 1}:${Number.isFinite(d) ? d : '∞'}`,
+            ).join(' ')}
+          </span>
+        </div>
+        <div
+          className="fairness__row"
+          title="Spread between highest- and lowest-producing quadrant relative to its tile share. >1.0 = super-continent territory."
+        >
+          <span>Pip spread</span>
+          <span style={{ color: scored.pipSpatial.spread > 1.0 ? '#c0341d' : undefined }}>
+            {scored.pipSpatial.spread.toFixed(2)}
+            <span style={{ marginLeft: 6, opacity: 0.6, fontSize: '0.85em' }}>
+              ({scored.pipSpatial.quadrantRatios.map(r => r.toFixed(2)).join(' ')})
+            </span>
+          </span>
+        </div>
+        <div className="fairness__bars">
+          {fairness.playerTotals.map((v, i) => (
+            <div key={i} className="fairness__bar" style={{ opacity: 0.4 + 0.6 * (v / max) }}>
+              <span className="fairness__bar-label">P{i + 1}: {v.toFixed(1)}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
+
+/** Deeper diagnostic panels — adjacent resource pairs, strategic
+ *  viability gate, top-20 archetype mix, top port-economy openings,
+ *  port hinterland support. Gated by the separate "Show advanced
+ *  diagnostics" toggle so the basic resource distribution view stays
+ *  uncluttered. */
+function AdvancedDiagnosticsPanel() {
+  const scored = useAppStore(s => s.scored)!;
+  return (
+    <>
       <div className="pairs">
         <div className="pairs__title">Adjacent resource pairs (obs / exp)</div>
         <div className="pairs__grid">
@@ -512,14 +789,24 @@ function AnalyzePanel() {
         return (
           <div className="pairs">
             <div className="pairs__title">Top port-economy openings</div>
-            <div style={{ fontSize: 12, opacity: 0.75 }}>
+            <div style={{ fontSize: 12, opacity: 0.85 }}>
               {top.map((p, i) => (
-                <div key={p.intersectionId} style={{ display: 'flex', gap: 8, marginTop: 2 }}>
-                  <span style={{ minWidth: 18, opacity: 0.5 }}>{i + 1}.</span>
-                  <span style={{ minWidth: 76 }}>strength <strong>{p.strength.toFixed(2)}</strong></span>
-                  <span style={{ minWidth: 70 }}>port {p.portStrength.toFixed(1)}</span>
-                  <span style={{ minWidth: 70 }}>prod {p.production.toFixed(1)}</span>
-                  <span style={{ minWidth: 84 }}>surplus {p.surplus.toFixed(2)}×</span>
+                <div
+                  key={p.intersectionId}
+                  style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: '2px 8px',
+                    marginTop: 4,
+                    paddingBottom: 4,
+                    borderBottom: i < top.length - 1 ? '1px dashed rgba(0,0,0,0.08)' : 'none',
+                  }}
+                >
+                  <span style={{ opacity: 0.5, minWidth: 16 }}>{i + 1}.</span>
+                  <span>strength <strong>{p.strength.toFixed(2)}</strong></span>
+                  <span>port {p.portStrength.toFixed(1)}</span>
+                  <span>prod {p.production.toFixed(1)}</span>
+                  <span>surplus {p.surplus.toFixed(2)}×</span>
                   <span style={{ opacity: 0.55 }}>rank #{p.rank + 1}</span>
                 </div>
               ))}
@@ -560,48 +847,6 @@ function AnalyzePanel() {
           </div>
         );
       })()}
-
-      <div className="fairness">
-        <div className="fairness__row">
-          <span>Stdev</span>
-          <span>{fairness.stdev.toFixed(2)}</span>
-        </div>
-        <div className="fairness__row">
-          <span>Spread</span>
-          <span>{fairness.spread.toFixed(2)}</span>
-        </div>
-        <div className="fairness__row">
-          <span>Mean</span>
-          <span>{mean.toFixed(2)}</span>
-        </div>
-        <div className="fairness__row" title="Min roads from any picked spot to any port, per player">
-          <span>Port reach</span>
-          <span>
-            {scored.playerPortDistance.map((d, i) =>
-              `P${i + 1}:${Number.isFinite(d) ? d : '∞'}`,
-            ).join(' ')}
-          </span>
-        </div>
-        <div
-          className="fairness__row"
-          title="Spread between highest- and lowest-producing quadrant relative to its tile share. >1.0 = super-continent territory."
-        >
-          <span>Pip spread</span>
-          <span style={{ color: scored.pipSpatial.spread > 1.0 ? '#c0341d' : undefined }}>
-            {scored.pipSpatial.spread.toFixed(2)}
-            <span style={{ marginLeft: 6, opacity: 0.6, fontSize: '0.85em' }}>
-              ({scored.pipSpatial.quadrantRatios.map(r => r.toFixed(2)).join(' ')})
-            </span>
-          </span>
-        </div>
-        <div className="fairness__bars">
-          {fairness.playerTotals.map((v, i) => (
-            <div key={i} className="fairness__bar" style={{ opacity: 0.4 + 0.6 * (v / max) }}>
-              <span className="fairness__bar-label">P{i + 1}: {v.toFixed(1)}</span>
-            </div>
-          ))}
-        </div>
-      </div>
     </>
   );
 }

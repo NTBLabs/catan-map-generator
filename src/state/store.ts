@@ -31,8 +31,11 @@ interface AppState {
   variants: Variants;
   /** Board overlay: top-N picks, spot value badges, synergy icons. */
   showBestLocations: boolean;
-  /** Control-panel readouts: per-resource health + snake-draft fairness. */
+  /** Control-panel readouts: per-resource pip totals + snake-draft fairness. */
   showResourceHealth: boolean;
+  /** Deeper diagnostic panels: adjacent-resource pairs, strategic viability,
+   *  top-20 archetype mix, top port-economy openings, port hinterland support. */
+  showAdvancedDiagnostics: boolean;
   /** Pure view-only toggle — does NOT affect generation or shareable URL. */
   waterFrame: boolean;
   /** View-only rotation in degrees (0, 60, 120, ...). Not persisted. */
@@ -46,6 +49,7 @@ interface AppState {
   setChallenge: (flavor: ChallengeFlavor, target?: ProducingResource | 'any') => void;
   toggleShowBestLocations: () => void;
   toggleShowResourceHealth: () => void;
+  toggleShowAdvancedDiagnostics: () => void;
   toggleWaterFrame: () => void;
   rotateBy: (delta: number) => void;
   resetRotation: () => void;
@@ -64,6 +68,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   variants: defaultVariants(),
   showBestLocations: false,
   showResourceHealth: false,
+  showAdvancedDiagnostics: false,
   waterFrame: true,
   rotation: 0,
   generating: false,
@@ -84,29 +89,39 @@ export const useAppStore = create<AppState>((set, get) => ({
   })),
   toggleShowBestLocations: () => set(s => ({ showBestLocations: !s.showBestLocations })),
   toggleShowResourceHealth: () => set(s => ({ showResourceHealth: !s.showResourceHealth })),
+  toggleShowAdvancedDiagnostics: () => set(s => ({ showAdvancedDiagnostics: !s.showAdvancedDiagnostics })),
   toggleWaterFrame: () => set(s => ({ waterFrame: !s.waterFrame })),
   rotateBy: (delta) => set(s => ({ rotation: (((s.rotation + delta) % 360) + 360) % 360 })),
   resetRotation: () => set({ rotation: 0 }),
 
   generate: () => {
     set({ generating: true });
-    const { playerCount, variants } = get();
-    try {
-      const result = generateMap({ playerCount, variants });
-      const scored = rescore(result.map);
-      set({
-        map: result.map,
-        scored,
-        attempts: result.attempts,
-        fellBack: result.fellBack,
-        generating: false,
-        variants: result.map.variants,
-      });
-      writeMapToUrl(result.map);
-    } catch (err) {
-      console.error(err);
-      set({ generating: false });
-    }
+    // Defer the blocking generation work to the next event-loop tick so
+    // React has a chance to PAINT the "generating" state before the main
+    // thread freezes. Without this, the spinner is invisible at pc=6
+    // hotZone (~1.3s blocking) because `set` + the sync work happen in
+    // the same microtask and React batches them into one render. CSS
+    // keyframe animations on the spinner keep running on the compositor
+    // thread even while JS is blocked, so the indicator actually animates.
+    setTimeout(() => {
+      const { playerCount, variants } = get();
+      try {
+        const result = generateMap({ playerCount, variants });
+        const scored = rescore(result.map);
+        set({
+          map: result.map,
+          scored,
+          attempts: result.attempts,
+          fellBack: result.fellBack,
+          generating: false,
+          variants: result.map.variants,
+        });
+        writeMapToUrl(result.map);
+      } catch (err) {
+        console.error(err);
+        set({ generating: false });
+      }
+    }, 0);
   },
 
   loadFromUrl: (encoded) => {

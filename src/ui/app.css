@@ -147,13 +147,6 @@
 .pip-dot { fill: var(--num-ink); }
 .pip-dot--red { fill: var(--num-red); }
 
-.port-rope {
-  stroke: #3a2510;
-  stroke-width: 0.025;
-  stroke-dasharray: 0.04 0.04;
-  opacity: 0.7;
-}
-
 .spot-badge {
   fill: var(--catan-cream);
   stroke: var(--catan-brown-dark);
@@ -378,6 +371,25 @@
   border: 2px solid var(--catan-gold);
   flex: 1;
 }
+
+/* Generation spinner — CSS keyframe animation runs on the compositor
+   thread so it continues spinning even when the main thread is blocked
+   doing the synchronous generation work (up to ~1.3s at pc=6 hotZone).
+   Sized in em so it scales with the button text. */
+.spinner {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  margin-right: 0.5em;
+  vertical-align: -0.15em;
+  border: 0.18em solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spinner-spin 0.8s linear infinite;
+}
+@keyframes spinner-spin {
+  to { transform: rotate(360deg); }
+}
 .btn--secondary {
   background: var(--catan-gold);
   color: var(--catan-brown-dark);
@@ -401,9 +413,169 @@
   transform: translateY(1px);
 }
 
+/* Share control: a single icon button that opens a modal action sheet
+   (copy link / save-share image). */
+.share {
+  display: flex;
+}
+.share__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  width: 48px;
+}
+
+/* Full-screen dimming scrim. Portaled to <body>, so it always covers the
+   viewport regardless of the drawer's CSS transform. Tapping it closes the
+   sheet; it also blocks interaction with everything underneath. */
+.share-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 16px;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  background: rgba(20, 8, 4, 0.5);
+  animation: share-fade 0.15s ease;
+}
+
+/* Action sheet: anchored to the bottom on phones, centered dialog on desktop. */
+.share-sheet {
+  width: 100%;
+  /* Sized so the 7 targets wrap to a balanced 4 + 3 grid (rather than 6 + 1):
+     content width ~300px fits exactly 4 bubbles per row, not 5. */
+  max-width: 332px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  background: var(--catan-cream);
+  border: 2px solid var(--catan-gold);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  animation: share-rise 0.18s ease;
+}
+
+@keyframes share-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes share-rise {
+  from { transform: translateY(12px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.share-sheet__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.share-sheet__title {
+  font-weight: 800;
+  font-size: 1.2rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--catan-brown-dark);
+}
+.share-sheet__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--catan-brown-mid);
+  cursor: pointer;
+}
+.share-sheet__close:hover,
+.share-sheet__close:focus-visible {
+  background: rgba(218, 149, 75, 0.25);
+}
+
+/* Target grid — circular icons with labels: direct app shortcuts (WhatsApp,
+   Telegram, Email), a Download bubble, and a "More" bubble that opens the
+   native OS share sheet (iMessage, Instagram, Discord, Snapchat, suggested
+   chats). Twitter/YouTube share-dialog pattern. */
+.share-targets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 8px;
+  justify-content: center;
+}
+.share-target {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 62px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  color: var(--catan-brown-dark);
+}
+.share-target__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  color: #fff;
+  box-shadow: var(--shadow-button);
+  transition: transform 0.12s ease, filter 0.12s ease;
+}
+/* Catan red→gold gradient — Copy link. Uses the app's own brand colors so the
+   primary action ties to the theme, while staying distinct from the flat brand
+   circles next to it. */
+.share-target__icon--util {
+  /* Ember: gold glow pooled low, strong red dominating the body (incl. the
+     top-right), deep red at the edges. Keeps Copy distinct from Reddit's flat
+     orange while staying red-forward. */
+  background: radial-gradient(130% 130% at 72% 100%, #e2a44d 0%, #d4441c 42%, #b62e0d 100%);
+}
+/* Ghost treatment — Email, Download, More. Light circle with a gold ring +
+   brown icon (the post-redesign look), giving the bottom row a calm,
+   consistent set distinct from the filled top row. */
+.share-target__icon--ghost {
+  background: #fffaf0;
+  border: 2px solid var(--catan-gold);
+  color: var(--catan-brown-dark);
+}
+.share-target:hover .share-target__icon,
+.share-target:focus-visible .share-target__icon {
+  transform: translateY(-2px);
+  filter: brightness(1.08);
+}
+.share-target__label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-align: center;
+  color: var(--catan-brown-dark);
+}
+
+.share-target:disabled {
+  opacity: 0.75;
+  cursor: default;
+}
+
+/* On wider screens, float the sheet to the vertical center for a calmer
+   dialog feel rather than a phone-style bottom sheet. */
+@media (min-width: 900px) {
+  .share-overlay {
+    align-items: center;
+  }
+}
+
 .health {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 6px;
   margin-top: 8px;
 }
@@ -411,10 +583,18 @@
   background: white;
   border: 1px solid var(--catan-brown-mid);
   border-radius: 10px;
-  padding: 6px;
+  padding: 6px 4px;
   text-align: center;
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 600;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.health__cell-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
 }
 .health__dot {
   display: inline-block;

@@ -7,6 +7,7 @@ import type {
   Port,
   ProducingResource,
   Variants,
+  WealthGapTarget,
 } from '../game/types';
 import { checkHardConstraints } from './constraints';
 import { mulberry32, makeSeed, pick } from './random';
@@ -15,9 +16,11 @@ import {
   arePortsBalanced,
   computeHealth,
   DEFAULT_SCARCITY_CONFIG,
+  findHotZoneCluster,
   hasBalancedPipDistribution,
   hasDroughtCluster,
   hasStrategicDiversity,
+  hasWealthGap,
   isResourceHealthy,
   scoreMap,
   type ScarcityConfig,
@@ -53,16 +56,26 @@ export function generateMap(opts: GenerateOptions): GenerateResult {
   let hardOnlyFallback: { hexes: Hex[]; ports: Port[] } | null = null;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const candidate = randomizeMap(opts.playerCount, opts.variants, rng, opts.spreadHighYieldMode);
+    // Resolve challenge BEFORE placement so hotZone can disable the no-red-
+    // adjacency rule and wealthGap can target a specific axis. Each attempt
+    // re-resolves so 'random' flavor can roll different kinds per attempt.
+    const challenge = resolveChallenge(opts.variants, rng);
+    const candidate = randomizeMap(
+      opts.playerCount,
+      opts.variants,
+      rng,
+      opts.spreadHighYieldMode,
+      challenge.wealthGapTarget,
+    );
     const hard = checkHardConstraints(candidate.hexes, candidate.ports, {
       noSameNumberAdjacent: opts.variants.noSameNumberAdjacent,
       noSameNumberOnResource: opts.variants.noSameNumberOnResource,
       noMultipleRedsOnResource: opts.variants.noMultipleRedsOnResource,
+      allowRedAdjacency: challenge.kind === 'hotZone',
     });
     if (!hard.ok) continue;
     if (!hardOnlyFallback) hardOnlyFallback = { hexes: candidate.hexes, ports: candidate.ports };
 
-    const challenge = resolveChallenge(opts.variants, rng);
     if (!challengeMatches(candidate.hexes, candidate.ports, opts.playerCount, challenge)) continue;
 
     const scored = scoreMap(
@@ -133,6 +146,10 @@ export function generateMap(opts: GenerateOptions): GenerateResult {
 interface ResolvedChallenge {
   kind: 'none' | ChallengeRolled;
   target?: ProducingResource;
+  /** wealthGap-specific: which axis cuts the board and which side is rich.
+   *  Decided at challenge-resolution time so number placement can bias
+   *  high-pip tokens to the rich side. */
+  wealthGapTarget?: WealthGapTarget;
 }
 
 function resolveChallenge(variants: Variants, rng: () => number): ResolvedChallenge {
@@ -140,7 +157,7 @@ function resolveChallenge(variants: Variants, rng: () => number): ResolvedChalle
   if (flavor === 'none') return { kind: 'none' };
   let kind: ChallengeRolled;
   if (flavor === 'random') {
-    kind = pick<ChallengeRolled>(['scarcity', 'boomOrBust', 'drought'], rng);
+    kind = pick<ChallengeRolled>(['scarcity', 'boomOrBust', 'drought', 'wealthGap', 'hotZone'], rng);
   } else {
     kind = flavor;
   }
@@ -151,7 +168,14 @@ function resolveChallenge(variants: Variants, rng: () => number): ResolvedChalle
       ? pick(PRODUCING_RESOURCES, rng)
       : pickedTarget;
   }
-  return { kind, target };
+  let wealthGapTarget: WealthGapTarget | undefined;
+  if (kind === 'wealthGap') {
+    wealthGapTarget = {
+      axis: pick<'q' | 'r' | 's'>(['q', 'r', 's'], rng),
+      richSide: pick<1 | -1>([1, -1], rng),
+    };
+  }
+  return { kind, target, wealthGapTarget };
 }
 
 function challengeMatches(
@@ -178,6 +202,63 @@ function challengeMatches(
   }
   if (challenge.kind === 'drought') {
     return hasDroughtCluster(hexes);
+  }
+  // Rich vs Poor and Hot Zone are "balanced scenarios" — they shape WHERE
+  // pip mass clusters geographically (Rich vs Poor) or where reds cluster
+  // (Hot Zone), but they're NOT about starving a resource. Apply the
+  // absolute resource-health and port-balance checks so a scenario can't
+  // accidentally produce a structurally dead resource. SKIP the strict
+  // per-resource pip-variance check (hasBalancedPipDistribution), which
+  // these scenarios fundamentally bias against by design — Hot Zone
+  // concentrates reds onto whatever resources host the cluster, and Rich
+  // vs Poor's targeted placement concentrates high-pip numbers on rich-
+  // side resources. Including the variance check broke Hot Zone pc=6
+  // (77% fallback, 24% match). Scarcity / Boom-or-bust / Drought skip
+  // both checks because their whole point is a starved or concentrated
+  // resource.
+  if (challenge.kind === 'wealthGap') {
+    if (!hasWealthGap(hexes)) return false;
+    if (!isResourceHealthy(health, hexes, playerCount)) return false;
+    // Port-balance check omitted: with fixed (non-shuffled) ports at pc=6
+    // it rejects a large fraction of attempts based on resource-vs-port
+    // geometry that has nothing to do with the scenario's identity. The
+    // resource-health check above already catches the "wood is dead" case
+    // — which was the user's actual concern.
+    return true;
+  }
+  if (challenge.kind === 'hotZone') {
+    const cluster = findHotZoneCluster(hexes);
+    if (!cluster) return false;
+    // Cluster resource diversity is the ONLY structural balance check for
+    // Hot Zone. The cluster must span at least 3 unique producing resources
+    // so reds (and the pip mass that comes with them) spread across resource
+    // types instead of dumping onto one or two.
+    //
+    // Why 3 at pc=6 too (not 4): noMultipleRedsOnResource caps reds at
+    // ceil(6/5)=2 per resource on the expansion board. With a 5-red cluster
+    // drawn from those 6 reds, the most common distribution is 2+2+1 = 3
+    // distinct cluster resources. Requiring 4 forces a rare edge case
+    // (one 2-red resource split half-in-half-out of cluster) and broke
+    // generation (79% fallback). 3 is the practical floor that still
+    // guarantees meaningful spread.
+    //
+    // The absolute resource-health checks (pip floor, every-resource-has-
+    // a-high-yield, production-share variance) all break Hot Zone pc=6
+    // because the cluster structurally steals high-yield numbers. Cluster
+    // diversity is a softer guarantee. Port-balance check still applies.
+    const minDiversity = 3;
+    const clusterResources = new Set<string>();
+    for (const id of cluster) {
+      const hex = hexes.find(h => h.id === id);
+      if (hex && hex.resource !== 'desert') clusterResources.add(hex.resource);
+    }
+    if (clusterResources.size < minDiversity) return false;
+    // Port-balance check is intentionally omitted here: with fixed (non-
+    // shuffled) port positions at pc=6, random resource placement leaves
+    // a 2:1 port with no matching-resource neighbour in most attempts.
+    // The cluster diversity check is sufficient as a resource-spread
+    // guarantee for this scenario.
+    return true;
   }
   return false;
 }

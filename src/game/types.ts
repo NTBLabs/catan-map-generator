@@ -3,8 +3,24 @@ export type ProducingResource = Exclude<Resource, 'desert'>;
 export type PortType = ProducingResource | 'generic';
 export type PlayerCount = 3 | 4 | 5 | 6;
 
-export type ChallengeFlavor = 'none' | 'scarcity' | 'boomOrBust' | 'drought' | 'random';
+export type ChallengeFlavor =
+  | 'none'
+  | 'scarcity'
+  | 'boomOrBust'
+  | 'drought'
+  | 'wealthGap'
+  | 'hotZone'
+  | 'random';
 export type ChallengeRolled = Exclude<ChallengeFlavor, 'none' | 'random'>;
+
+/** Targeting info for the wealthGap scenario: which axis cuts the board and
+ *  which side is rich. Picked at challenge resolution time so number
+ *  placement can bias high-pip tokens to the rich side and push low-pip
+ *  exceptions to the dividing line. */
+export interface WealthGapTarget {
+  axis: 'q' | 'r' | 's';
+  richSide: 1 | -1;
+}
 
 export interface AxialCoord {
   q: number;
