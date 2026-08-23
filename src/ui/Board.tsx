@@ -259,7 +259,7 @@ function FrameSeamsExpansion({ hexes, margin, rotation }: {
   // a numbered badge sitting on the outer end of the seam itself (not on the
   // adjacent section). Label = the segment that ENDS at this break, so two
   // breaks bracketing a split side read as the same number twice (the "2,2"
-  // and "5,5" pairs the user described).
+  // and "5,5" pairs visible on the frame).
   for (let i = 0; i < breaks.length; i++) {
     const b = breaks[i];
     const d = puzzleBreakPath(b.landX, b.landY, b.outerX, b.outerY);
@@ -394,10 +394,11 @@ export function Board() {
     const portReach = 2.0;
     const stroke = 0.3;
     // labelReach extends the viewBox to fit RICH/POOR badges PAST the port
-    // reach (since the user wants those labels off-board for clarity). Only
-    // the wealthGap scenario needs this — hotZone's HOT ZONE label sits IN
-    // the water frame (not past ports), so its viewBox stays the original
-    // tight size and the board doesn't shrink for that scenario.
+    // reach, which keeps those labels clear of the ports instead of sitting
+    // on top of them. Only the wealthGap scenario needs this. hotZone's HOT
+    // ZONE label sits IN the water frame (not past ports), so its viewBox
+    // stays the original tight size and the board doesn't shrink for that
+    // scenario.
     const rolled = map.variants.challenge.rolledFlavor;
     const labelReach = rolled === 'wealthGap' ? 0.7 : 0;
     const portEnd = landR + portReach;

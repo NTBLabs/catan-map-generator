@@ -71,7 +71,7 @@ src/
     coords.ts       Pointy-top axial coords, hex to pixel, intersection graph builder
     layout.ts       Empty board layout plus canonical port slot positions per board size
   generator/    Pure functions. No DOM, no React. This is the product.
-    random.ts       mulberry32 seeded RNG, shuffle, pick, seedFromString
+    random.ts       mulberry32 seeded RNG, shuffle, pick, makeSeed
     randomize.ts    Resource placement, then two-phase number placement by candidate filtering
     constraints.ts  Hard constraint checks, run after placement
     generate.ts     The attempt loop: resolve scenario, randomize, gate, score, accept or retry
@@ -89,7 +89,7 @@ src/
     ParentLockup.tsx  NTB Labs parent lockup used in the header. Inlined wordmark paths.
     icons.tsx, app.css, theme.css, parentLockup.css, ntb-labs-wordmark.svg
   url/
-    encode.ts       Share links. v3 bit-packed wire format, v1 and v2 legacy decoders
+    encode.ts       Share links. v3 bit-packed wire format. Pre-v3 payloads are rejected
 tests/          Vitest. Unit tests plus env-gated stress harnesses
 scripts/        build-og.mjs, renders public/og.svg to og.png via resvg
 ```
