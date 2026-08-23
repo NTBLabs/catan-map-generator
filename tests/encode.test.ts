@@ -79,16 +79,16 @@ describe('v3 packed encode/decode', () => {
     expect(dec.seed).toBe(0xffffffff);
   });
 
-  it('still decodes legacy v2 JSON payloads', () => {
-    // Hand-built v2 JSON: same shape encodeMapState used to produce before v3.
+  it('rejects a legacy v1/v2 JSON payload with an explicit error', () => {
+    // Hand-built v2 JSON: the shape encodeMapState produced before v3. Its
+    // decoder is gone, so this must fail loudly rather than throw somewhere
+    // inside base64 or bit-reader internals.
     const v2Json = JSON.stringify({ v: 2, s: 'abc123', p: 4, z: {} });
     const v2Bytes = new TextEncoder().encode(v2Json);
     let bin = '';
     for (let i = 0; i < v2Bytes.length; i++) bin += String.fromCharCode(v2Bytes[i]);
     const enc = btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
     expect(enc[0]).toBe('e');
-    const dec = decodeMapState(enc);
-    expect(dec.playerCount).toBe(4);
-    expect(typeof dec.seed).toBe('number');
+    expect(() => decodeMapState(enc)).toThrow(/Unrecognized map link/);
   });
 });

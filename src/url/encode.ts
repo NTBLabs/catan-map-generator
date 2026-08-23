@@ -1,5 +1,4 @@
 import { generateMap } from '../generator/generate';
-import { seedFromString } from '../generator/random';
 import type {
   ChallengeFlavor,
   MapState,
@@ -12,10 +11,10 @@ import type {
 // u32 seed + every variant flag/enum at its minimum bit width. Encoded as
 // 7 bytes → 10 chars of base64url. Typical URL hash shrinks to `#m=` + 10.
 //
-// Wire format v2 (legacy): JSON {v:2, s, p, z:{...non-default flags}} →
-// base64url. ~30-50 chars. Decoder still supports it.
-//
-// Wire format v1 (legacy): full hex/port JSON. Kept for backward compat.
+// Formats v1 and v2 were JSON payloads carrying either a full board (v1) or
+// a seed plus non-default flags (v2). Their decoders were removed once it was
+// confirmed no link in either format was ever published. Anything that is not
+// a v3 payload is now rejected with an explicit error rather than guessed at.
 
 // ---------------------------------------------------------------------------
 // v3 packed format
@@ -146,36 +145,6 @@ function fromBase64Url(s: string): Uint8Array {
 }
 
 // ---------------------------------------------------------------------------
-// Legacy JSON wire types (v1/v2) — decoder only.
-// ---------------------------------------------------------------------------
-
-interface WireZ {
-  d?: 0 | 1;
-  dr?: string;
-  sp?: 0 | 1;
-  nn?: 0 | 1;
-  nr?: 0 | 1;
-  nm?: 0 | 1;
-  c?: { f?: string; t?: string; rf?: string; rt?: string };
-}
-
-interface WireV2 {
-  v: 2;
-  s: string;
-  p: number;
-  z: WireZ;
-}
-
-interface WireV1 {
-  v: 1;
-  s: string;
-  p: number;
-  h: Array<[number, number, string, number | null]>;
-  o: Array<[string, number, string]>;
-  z: WireZ;
-}
-
-// ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
@@ -184,77 +153,19 @@ export function encodeMapState(map: MapState): string {
 }
 
 export function decodeMapState(encoded: string): MapState {
-  // v3 packed payloads always start with the version nibble 0011 → base64url
-  // first char in {M,N,O,P}. v1/v2 JSON payloads always start with '{' →
-  // base64url first char 'e'. Anything else falls back to JSON parsing for
-  // forward safety.
+  // v3 packed payloads always start with the version nibble 0011, which
+  // base64url-encodes to a first character in {M, N, O, P}. The legacy v1 and
+  // v2 JSON payloads started with '{' (first character 'e'); their decoders
+  // are gone, so anything that is not v3 is reported rather than guessed at.
   const first = encoded[0];
-  const bytes = fromBase64Url(encoded);
-  if (first === 'M' || first === 'N' || first === 'O' || first === 'P') {
-    return unpackV3(bytes);
+  if (first !== 'M' && first !== 'N' && first !== 'O' && first !== 'P') {
+    throw new Error(
+      'Unrecognized map link: expected a v3 payload starting with M, N, O or P, ' +
+        `got ${JSON.stringify(first ?? '')}. Links in the pre-v3 JSON format are ` +
+        'no longer supported.',
+    );
   }
-  const json = new TextDecoder().decode(bytes);
-  const wire = JSON.parse(json) as WireV1 | WireV2;
-  if (wire.v === 2) return decodeV2(wire);
-  if (wire.v === 1) return decodeV1(wire);
-  throw new Error(`Unsupported map version: ${(wire as { v: number }).v}`);
-}
-
-function variantsFromZ(z: WireZ): Variants {
-  return {
-    includeDesert: z.d === undefined ? true : z.d === 1,
-    desertReplacement: (z.dr ?? 'ore') as ProducingResource,
-    shufflePorts: z.sp === 1,
-    noSameNumberAdjacent: z.nn === undefined ? true : z.nn === 1,
-    noSameNumberOnResource: z.nr === undefined ? true : z.nr === 1,
-    noMultipleRedsOnResource: z.nm === undefined ? true : z.nm === 1,
-    challenge: {
-      flavor: (z.c?.f ?? 'none') as ChallengeFlavor,
-      targetResource: (z.c?.t ?? 'any') as ProducingResource | 'any',
-    },
-  };
-}
-
-function decodeV2(wire: WireV2): MapState {
-  const variants = variantsFromZ(wire.z);
-  const result = generateMap({
-    seed: seedFromString(wire.s),
-    playerCount: wire.p as PlayerCount,
-    variants,
-  });
-  return result.map;
-}
-
-function decodeV1(wire: WireV1): MapState {
-  return {
-    seed: seedFromString(wire.s),
-    playerCount: wire.p as PlayerCount,
-    hexes: wire.h.map(([q, r, resource, number], i) => ({
-      id: `h${i}`,
-      q,
-      r,
-      resource: resource as MapState['hexes'][number]['resource'],
-      number,
-    })),
-    ports: wire.o.map(([hexId, side, type]) => ({
-      hexId,
-      side: side as 0 | 1 | 2 | 3 | 4 | 5,
-      type: type as MapState['ports'][number]['type'],
-    })),
-    // Shares variantsFromZ with decodeV2. It previously inlined its own copy
-    // that read an absent flag as false, where variantsFromZ reads it as the
-    // documented default of true, so a v1 link decoded with the placement
-    // toggles silently off.
-    variants: {
-      ...variantsFromZ(wire.z),
-      challenge: {
-        flavor: (wire.z.c?.f ?? 'none') as ChallengeFlavor,
-        targetResource: (wire.z.c?.t ?? 'any') as ProducingResource | 'any',
-        rolledFlavor: wire.z.c?.rf as MapState['variants']['challenge']['rolledFlavor'],
-        rolledTarget: wire.z.c?.rt as MapState['variants']['challenge']['rolledTarget'],
-      },
-    },
-  };
+  return unpackV3(fromBase64Url(encoded));
 }
 
 export function writeMapToUrl(map: MapState): void {
