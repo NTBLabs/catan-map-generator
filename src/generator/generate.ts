@@ -222,8 +222,8 @@ function challengeMatches(
     // Port-balance check omitted: with fixed (non-shuffled) ports at pc=6
     // it rejects a large fraction of attempts based on resource-vs-port
     // geometry that has nothing to do with the scenario's identity. The
-    // resource-health check above already catches the "wood is dead" case
-    // — which was the user's actual concern.
+    // resource-health check above already catches the "wood is dead" case,
+    // which is the failure that actually matters for this scenario.
     return true;
   }
   if (challenge.kind === 'hotZone') {
@@ -245,7 +245,7 @@ function challengeMatches(
     // The absolute resource-health checks (pip floor, every-resource-has-
     // a-high-yield, production-share variance) all break Hot Zone pc=6
     // because the cluster structurally steals high-yield numbers. Cluster
-    // diversity is a softer guarantee. Port-balance check still applies.
+    // diversity is a softer guarantee.
     const minDiversity = 3;
     const clusterResources = new Set<string>();
     for (const id of cluster) {

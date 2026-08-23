@@ -106,8 +106,8 @@ function portCornerIntersections(
 /** For each port, compute a "hinterland strength" score: weighted sum of
  *  nearby matching-resource hex pips (all producing hexes for generic ports),
  *  with weights 1.0 / 0.6 / 0.3 by graph distance (0 / 1 / 2 roads). Captures
- *  the hidden bias the user flagged: identical port counts can still favor
- *  one resource if its port lands next to better numbers. */
+ *  a bias that raw port counts hide: two boards with identical port counts
+ *  still favor whichever resource's port landed next to better numbers. */
 function computePortSupport(
   ports: Port[],
   graph: IntersectionGraph,
@@ -171,7 +171,7 @@ function pairKey(a: ProducingResource, b: ProducingResource): string {
 
 /** Split the board into 4 quadrants around the centroid of hex pixel
  *  positions, then compare each quadrant's pip share to its tile share.
- *  Catches the "super continent" case the user described: 6/8/5/9 all
+ *  Catches the "super continent" case: 6/8/5/9 all
  *  legally placed but clustered into a single quadrant of the board,
  *  leaving the other half of the map productively dead. */
 function computePipSpatial(hexes: Hex[]): PipSpatial {
@@ -317,9 +317,9 @@ export function scoreMap(
   // bonus below: a resource is "scarce" if it has FEW tiles (hard to reach)
   // OR LOW total pips (rolls rarely even where it exists). Spots adjacent to
   // scarce resources get a premium because trading for them mid-game is
-  // expensive. Distinguishing the two captures cases the user flagged:
-  // 4 wheat tiles all on 2/3/11/12 are scarcer in production than 3 ore
-  // tiles on 5/6/8 — tile count alone would say the opposite.
+  // expensive. Distinguishing the two captures the cases tile count alone
+  // gets backwards: 4 wheat tiles all on 2/3/11/12 are scarcer in production
+  // than 3 ore tiles on 5/6/8.
   const tilesPerResource = new Map<ProducingResource, number>();
   const pipsPerResource = new Map<ProducingResource, number>();
   for (const h of hexes) {
@@ -756,8 +756,8 @@ function scoreSpot(
   // Scarcity bonus: each UNIQUE adjacent resource type contributes a small
   // premium proportional to how scarce that resource is on this map. Two
   // components, summed:
-  //   • Tile-count scarcity: (maxTiles − tiles) × 0.5 — fewer hexes of this
-  //     resource exist, fewer corners to compete for.
+  //   • Tile-count scarcity: (maxTiles − tiles) × tileWeight, which defaults
+  //     to 0. Fewer hexes of this resource exist, fewer corners to compete for.
   //   • Pip-yield scarcity:  (maxPips  − pips ) × pipWeight — even if tile
   //     count is fine, if those tiles roll rarely the resource is hard to
   //     come by; this is the only term active in the current default config.
@@ -1055,12 +1055,16 @@ export function computeHealth(hexes: Hex[]): ResourceHealth[] {
     const ratio = expectedShare > 0 ? productionShare / expectedShare : 1;
 
     // Status reflects the worst of three independent signals:
-    //   (a) Robber-vulnerability — concentration > 0.6 means a 7 wiping out
+    //   (a) Robber-vulnerability: concentration > 0.6 means a 7 wiping out
     //       this resource's top number cripples the resource entirely.
-    //   (b) Absolute pip floor — totalPips < 5 is starved no matter what.
-    //   (c) Production-share deviation — even with decent absolute pips, a
-    //       resource producing far below its tile-share allocation poisons
-    //       the trading economy (everyone needs it; nobody has it).
+    //       Unhealthy outright.
+    //   (b) Absolute pip floor, graded: totalPips < 7 is a warning, < 5 is
+    //       starved no matter what and is unhealthy.
+    //   (c) Production-share deviation, also graded: even with decent
+    //       absolute pips, a resource producing far from its tile-share
+    //       allocation poisons the trading economy (everyone needs it;
+    //       nobody has it). Ratio outside 0.75-1.4 warns, outside 0.6-1.7
+    //       is unhealthy.
     let status: ResourceHealth['status'] = 'healthy';
     if (st.totalPips < 7) status = 'warning';
     if (st.totalPips < 5) status = 'unhealthy';
@@ -1159,7 +1163,7 @@ export function hasBalancedPipDistribution(hexes: Hex[]): boolean {
 }
 
 /** True if the 5 specific-resource ports have roughly balanced hinterland
- *  strength. The user's flagged failure mode: an ore port adjacent to two
+ *  strength. The failure mode this catches: an ore port adjacent to two
  *  high-yield ore tiles is wildly more valuable than a sheep port adjacent
  *  to weak sheep tiles, even though the canonical port count is identical.
  *  Threshold: max/min support ratio ≤ 3.0 (looser than 2.0 to allow real
@@ -1176,9 +1180,9 @@ export function arePortsBalanced(ports: Port[], hexes: Hex[]): boolean {
   return max / min <= 3.0;
 }
 
+/** True if the board has at least one triplet of mutually-adjacent hexes all
+ *  carrying low-yield numbers (2, 3, 11, 12). */
 export function hasDroughtCluster(hexes: Hex[]): boolean {
-  // Returns true if there is at least one triplet of mutually-adjacent hexes
-  // all carrying low-yield numbers (2, 3, 11, 12).
   const byKey = new Map(hexes.map(h => [`${h.q},${h.r}`, h] as const));
   for (const hex of hexes) {
     if (hex.number === null || !LOW_YIELD_NUMBERS.has(hex.number)) continue;

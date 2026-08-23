@@ -1,4 +1,4 @@
-// Board → PNG export / native share.
+// Board → PNG export.
 //
 // The board is rendered as inline SVG, but its number tokens, pip dots, spot
 // badges, etc. are styled through CSS *classes* (see app.css) that resolve CSS

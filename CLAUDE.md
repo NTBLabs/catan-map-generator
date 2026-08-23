@@ -19,10 +19,11 @@ Run through this before proposing or writing anything.
 4. Confirm the working tree state. It was left clean on 2026-08-22 with both
    branches pushed. See "Working tree and the stress branch" below for how the
    two tracks divide.
-5. `npm test` should report 31 passed and 1 skipped on `main`. The skip is the
-   env-gated planner-bias harness, not a failure. On
-   `simulator-stress-testing` the same command reports 31 passed and 16
-   skipped, since every other harness lives there.
+5. `npm test` should report 53 passed and 1 skipped on `main`. The skip is the
+   env-gated planner-bias harness, not a failure. `simulator-stress-testing`
+   carries every other harness, so its skip count is much higher; that branch
+   has not been merged forward since `panzoom.test.ts` landed, so do not
+   assume its totals match main's.
 6. Confirm what Nathan wants to work on before proposing work. This project sat
    untouched from 2026-06-06 to 2026-08-22, so no plan in your context is
    guaranteed current.
@@ -74,18 +75,19 @@ src/
     randomize.ts    Resource placement, then two-phase number placement by candidate filtering
     constraints.ts  Hard constraint checks, run after placement
     generate.ts     The attempt loop: resolve scenario, randomize, gate, score, accept or retry
-    score.ts        Spot scoring, archetypes, snake draft, health, pairs, ports, spatial. 1367 lines.
+    score.ts        Spot scoring, archetypes, snake draft, health, pairs, ports, spatial. 1301 lines.
   state/
     store.ts        Zustand store. playerCount, variants, view toggles, generate(), loadFromUrl()
   ui/
-    Board.tsx       Inline SVG board, pan/zoom/rotate, scenario overlays, pick overlay. 1429 lines.
+    Board.tsx       Inline SVG board, pan/zoom/rotate, scenario overlays, pick overlay. 1421 lines.
     panZoom.ts      Headless pan/zoom controller. Owns the view state, both transform
                     writers, and the hold set that keeps CSS and SVG mode exclusive.
                     DOM writes are injected, so it is testable without a DOM.
-    Controls.tsx    Bottom drawer, all options, share dialog, diagnostics panels. 852 lines.
+    Controls.tsx    Bottom drawer, all options, share dialog, diagnostics panels. 867 lines.
     TileIcon.tsx    Tile art and port glyphs
     exportImage.ts  SVG to PNG export by copying computed styles onto a clone
-    icons.tsx, app.css, theme.css
+    ParentLockup.tsx  NTB Labs parent lockup used in the header. Inlined wordmark paths.
+    icons.tsx, app.css, theme.css, parentLockup.css, ntb-labs-wordmark.svg
   url/
     encode.ts       Share links. v3 bit-packed wire format, v1 and v2 legacy decoders
 tests/          Vitest. Unit tests plus env-gated stress harnesses
@@ -177,14 +179,19 @@ npm install
 npm run dev        # http://localhost:5173, host: true so a phone on the same wifi can reach it
 npm run build      # tsc -b then vite build, output in dist/
 npm run preview
-npm test           # vitest run. Expect 31 passed, 4 skipped
+npm test           # vitest run. Expect 53 passed, 1 skipped
 npm run build:og   # re-render public/og.png from public/og.svg
 ```
 
-Stress harnesses, each gated on its own env var:
+Stress harnesses, each gated on its own env var. Only the first one exists on
+`main`; the rest live on `simulator-stress-testing` and the commands below only
+work from that branch.
 
 ```bash
+# main
 RUN_PLANNER_BIAS=1 npx vitest run tests/stress-planner-bias.test.ts
+
+# simulator-stress-testing only
 RUN_NEW_FLAVORS=1 npx vitest run tests/stress-new-flavors.test.ts
 RUN_PLAYER_BALANCE=1 npx vitest run tests/stress-new-flavors.test.ts
 RUN_SCENARIO_TOGGLES=1 npx vitest run tests/stress-scenario-toggles.test.ts
@@ -196,8 +203,9 @@ These take minutes, not seconds. Hot Zone at 6 players is the slowest path in
 the system, roughly 1 second per accepted map.
 
 Deploy: `.github/workflows/deploy.yml` builds on every push to `main` (Node 20,
-`npm ci`, `npm run build`) and publishes `dist/` to GitHub Pages. The repo
-settings Pages source must be "GitHub Actions".
+`npm ci`, `npm test`, `npm run build`) and publishes `dist/` to GitHub Pages.
+A red suite blocks the deploy. The repo settings Pages source must be
+"GitHub Actions".
 
 The site is served at `https://catan.ntblabs.dev`, so `vite.config.ts` sets
 `base: '/'` and `public/CNAME` carries the domain. `public/` is copied verbatim

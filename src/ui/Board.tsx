@@ -194,10 +194,10 @@ function rayToFlatTopHex(angle: number, R: number): { x: number; y: number } {
 }
 
 // 10 land-hex corners where the 5-6 expansion frame pieces meet. Positions
-// were specified by the user via the perimeter-numbers debug overlay (the
-// breaks sit "between edge N and edge N+1", which is the END corner of edge N
-// = corner (side+1) % 6 of edge N's hex). Walking CW from the top of (3,-3),
-// segment lengths go 5-5-2-5-2-5-5-2-5-2 around the 38-edge perimeter.
+// were read off the perimeter-numbers debug overlay: the breaks sit "between
+// edge N and edge N+1", which is the END corner of edge N = corner
+// (side+1) % 6 of edge N's hex. Walking CW from the top of (3,-3), segment
+// lengths go 5-5-2-5-2-5-5-2-5-2 around the 38-edge perimeter.
 const BREAK_LAND_CORNERS_EXPANSION: Array<{ q: number; r: number; corner: number; label: string }> = [
   { q:  3, r: -3, corner: 0, label: 'top of (3,-3)' },          // edge 5 end  — ends top main (label 4)
   { q:  3, r: -1, corner: 1, label: 'top-right of (3,-1)' },    // edge 10 end — ends TR main (label 5)
@@ -289,13 +289,6 @@ function FrameSeamsExpansion({ hexes, margin, rotation }: {
 
   return <>{elems}</>;
 }
-
-// ---------------------------------------------------------------------------
-// (Old corner-bump extension component removed — the user's reference shows
-//  seam LINES from perimeter edges, not bumps from side midpoints. See
-//  FrameSeamsExpansion above for the new implementation.)
-// ---------------------------------------------------------------------------
-
 
 function pipDots(n: number, cx: number, cy: number): JSX.Element[] {
   const count = PIP_VALUE[n] ?? 0;
@@ -863,10 +856,6 @@ export function Board() {
             />
           ))}
 
-          {/* Scenario LABELS — render above tokens but positioned off-board so
-              they never sit over a number token. The dividing line + cluster
-              borders that go WITH these labels are rendered earlier (between
-              tile fills and resource artwork) so number tokens cover them. */}
           {/* Scenario LABELS are rendered OUTSIDE this rotation group (just
               before the panZoom group closes) so they always sit at the
               visual top / perpendicular edges of the rotated cluster +
@@ -942,7 +931,7 @@ export function Board() {
                   .map(id => map.hexes.find(h => h.id === id))
                   .filter((h): h is Hex => !!h);
                 if (clusterHexes.length === 0) return null;
-                // The user's spec: take the cluster's BORDER (not centers),
+                // Label placement rule: take the cluster's BORDER (not centers),
                 // find the highest screen-y (could be a singular vertex or
                 // an edge between two vertices at the same y after rotation),
                 // and center the label on that.
@@ -1090,7 +1079,7 @@ function puzzleBreakPath(innerX: number, innerY: number, outerX: number, outerY:
   const ty = dx / len;
   const bump = Math.min(0.22, len * 0.25);
   // Two quadratic curves with opposite-side controls produce a clean S-curve;
-  // the user's reference sketch is essentially a single sine-wave seam.
+  // the reference sketch is essentially a single sine-wave seam.
   const pt = (t: number, perp: number) => ({
     x: innerX + dx * t + tx * perp,
     y: innerY + dy * t + ty * perp,
@@ -1128,7 +1117,7 @@ function FrameCorners({ hexes, margin, rotation }: { hexes: Hex[]; margin: numbe
   // the land hex corner outward through the water to the outer edge of the
   // frame, with a section number badge sitting on the outer end of the seam.
   // Labels go 1..6 CW starting from the break in the bottom area (closest to
-  // SVG +y), matching the user's reference layout.
+  // SVG +y), matching the reference layout.
   for (let i = 0; i < 6; i++) {
     const b = sorted[i];
     const proj = rayToFlatTopHex(b.angle, R);
