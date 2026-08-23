@@ -216,6 +216,8 @@ The board view controls (rotate ±30°, reset rotation, reset pan/zoom) sit `pos
 
 `url/encode.ts` serializes only the **seed + player count + non-default variants** into the URL hash — NOT the full hex/port data. The recipient re-runs `generateMap` with the same parameters, and because the RNG (`mulberry32`) is deterministic, gets the byte-identical board.
 
+That makes determinism a hard contract rather than a nice property: any change to placement, gating, or RNG call order invalidates every link ever shared.
+
 That keeps the URL around 50 chars for a typical balanced board (vs. ~1400 chars if we shipped the full state). Only fields that differ from `defaultVariants()` are written, so a default 4-player URL looks like:
 
 ```
