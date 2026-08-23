@@ -241,13 +241,12 @@ function decodeV1(wire: WireV1): MapState {
       side: side as 0 | 1 | 2 | 3 | 4 | 5,
       type: type as MapState['ports'][number]['type'],
     })),
+    // Shares variantsFromZ with decodeV2. It previously inlined its own copy
+    // that read an absent flag as false, where variantsFromZ reads it as the
+    // documented default of true, so a v1 link decoded with the placement
+    // toggles silently off.
     variants: {
-      includeDesert: wire.z.d === 1,
-      desertReplacement: wire.z.dr as ProducingResource,
-      shufflePorts: wire.z.sp === 1,
-      noSameNumberAdjacent: wire.z.nn === 1,
-      noSameNumberOnResource: wire.z.nr === 1,
-      noMultipleRedsOnResource: wire.z.nm === 1,
+      ...variantsFromZ(wire.z),
       challenge: {
         flavor: (wire.z.c?.f ?? 'none') as ChallengeFlavor,
         targetResource: (wire.z.c?.t ?? 'any') as ProducingResource | 'any',
