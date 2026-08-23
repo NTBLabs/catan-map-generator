@@ -156,7 +156,6 @@ interface WireZ {
   nn?: 0 | 1;
   nr?: 0 | 1;
   nm?: 0 | 1;
-  bp?: 0 | 1;
   c?: { f?: string; t?: string; rf?: string; rt?: string };
 }
 
@@ -262,14 +261,4 @@ function decodeV1(wire: WireV1): MapState {
 export function writeMapToUrl(map: MapState): void {
   const enc = encodeMapState(map);
   history.replaceState(null, '', `#m=${enc}`);
-}
-
-export function readMapFromUrl(): MapState | null {
-  const hash = window.location.hash;
-  if (!hash.startsWith('#m=')) return null;
-  try {
-    return decodeMapState(hash.slice(3));
-  } catch {
-    return null;
-  }
 }

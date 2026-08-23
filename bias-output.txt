@@ -1,4 +1,10 @@
-﻿
+﻿Recorded output of the planner-bias stress harness, tests/stress-planner-bias.test.ts,
+run with RUN_PLANNER_BIAS=1 on 2026-05-31 (commit 805bf5b). It compares the current
+survival-discounted R1 planner (Mode A) against a greedy-local baseline (Mode B) over
+400 maps per player count, and is the reference result that justified the planner.
+Raw vitest stdout, ANSI colour codes included. Regenerate, do not hand-edit.
+
+
 [1m[7m[36m RUN [39m[27m[22m [36mv2.1.9 [39m[90mD:/Personal Projects/Catan Map Generator[39m
 
 [90mstdout[2m | tests/stress-planner-bias.test.ts[2m > [22m[2mplanner bias diagnostic[2m > [22m[2mMode A (current planner) vs Mode B (greedy local)

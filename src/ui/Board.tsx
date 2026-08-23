@@ -198,17 +198,17 @@ function rayToFlatTopHex(angle: number, R: number): { x: number; y: number } {
 // edge N and edge N+1", which is the END corner of edge N = corner
 // (side+1) % 6 of edge N's hex. Walking CW from the top of (3,-3), segment
 // lengths go 5-5-2-5-2-5-5-2-5-2 around the 38-edge perimeter.
-const BREAK_LAND_CORNERS_EXPANSION: Array<{ q: number; r: number; corner: number; label: string }> = [
-  { q:  3, r: -3, corner: 0, label: 'top of (3,-3)' },          // edge 5 end  — ends top main (label 4)
-  { q:  3, r: -1, corner: 1, label: 'top-right of (3,-1)' },    // edge 10 end — ends TR main (label 5)
-  { q:  3, r:  0, corner: 1, label: 'top-right of (3,0)' },     // edge 12 end — ends TR ext  (label 5)
-  { q:  1, r:  2, corner: 2, label: 'bottom-right of (1,2)' },  // edge 17 end — ends R main  (label 6)
-  { q:  0, r:  3, corner: 2, label: 'bottom-right of (0,3)' },  // edge 19 end — ends R ext   (label 6)
-  { q: -2, r:  3, corner: 3, label: 'bottom of (-2,3)' },       // edge 24 end — ends bottom main (label 1)
-  { q: -2, r:  1, corner: 4, label: 'bottom-left of (-2,1)' },  // edge 29 end — ends BL main (label 2)
-  { q: -2, r:  0, corner: 4, label: 'bottom-left of (-2,0)' },  // edge 31 end — ends BL ext  (label 2)
-  { q:  0, r: -2, corner: 5, label: 'top-left of (0,-2)' },     // edge 36 end — ends L main  (label 3)
-  { q:  1, r: -3, corner: 5, label: 'top-left of (1,-3)' },     // edge 38 end — ends L ext   (label 3)
+const BREAK_LAND_CORNERS_EXPANSION: Array<{ q: number; r: number; corner: number }> = [
+  { q:  3, r: -3, corner: 0 },  // edge 5 end, ends top main (label 4)
+  { q:  3, r: -1, corner: 1 },  // edge 10 end, ends TR main (label 5)
+  { q:  3, r:  0, corner: 1 },  // edge 12 end, ends TR ext  (label 5)
+  { q:  1, r:  2, corner: 2 },  // edge 17 end, ends R main  (label 6)
+  { q:  0, r:  3, corner: 2 },  // edge 19 end, ends R ext   (label 6)
+  { q: -2, r:  3, corner: 3 },  // edge 24 end, ends bottom main (label 1)
+  { q: -2, r:  1, corner: 4 },  // edge 29 end, ends BL main (label 2)
+  { q: -2, r:  0, corner: 4 },  // edge 31 end, ends BL ext  (label 2)
+  { q:  0, r: -2, corner: 5 },  // edge 36 end, ends L main  (label 3)
+  { q:  1, r: -3, corner: 5 },  // edge 38 end, ends L ext   (label 3)
 ];
 
 /** 10 wavy seam lines for the 5-6 expansion water frame. Each line emanates

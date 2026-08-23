@@ -143,7 +143,7 @@ export function Controls() {
   const enc = encodeURIComponent;
   const shareTargets: Array<{
     key: string; label: string; href: string; Icon: typeof WhatsAppIcon;
-    color?: string; blank?: boolean; ghost?: boolean; ring?: boolean;
+    color?: string; blank?: boolean; ring?: boolean;
   }> = [
     { key: 'whatsapp', label: 'WhatsApp', color: '#25D366', Icon: WhatsAppIcon, blank: true,
       href: `https://wa.me/?text=${enc(`${shareText} ${shareUrl}`)}` },
@@ -344,8 +344,8 @@ export function Controls() {
                   onClick={() => setShareMenuOpen(false)}
                 >
                   <span
-                    className={`share-target__icon${t.ghost ? ' share-target__icon--ghost' : ''}`}
-                    style={t.ghost ? undefined : { background: t.color, ...(t.ring ? { border: '2px solid var(--catan-gold)' } : {}) }}
+                    className="share-target__icon"
+                    style={{ background: t.color, ...(t.ring ? { border: '2px solid var(--catan-gold)' } : {}) }}
                   >
                     <t.Icon />
                   </span>
@@ -751,7 +751,7 @@ function AdvancedDiagnosticsPanel() {
             <div className="pairs__grid">
               {entries.map(([label, count]) => (
                 <div
-                  className={`pairs__cell pairs__cell--${count >= K ? 'normal' : count >= 1 ? 'rare' : 'rare'}`}
+                  className={`pairs__cell pairs__cell--${count >= K ? 'normal' : 'rare'}`}
                   key={label}
                 >
                   <span className="pairs__label">{label}</span>

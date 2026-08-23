@@ -1124,33 +1124,6 @@ export function isResourceHealthy(
   return true;
 }
 
-/** Softer resource-health check for "concentrated" scenarios (Hot Zone).
- *  Drops the relative production-share variance rule and the concentration
- *  cap — both of which Hot Zone's cluster mechanic fundamentally violates
- *  by design (the cluster MUST concentrate pip mass on some resources).
- *  Keeps the absolute starvation floor (pip-per-tile >= 1.7) and the
- *  "every resource has at least one high-yield" rule so no resource is
- *  truly dead-on-arrival. Use when a scenario's identity is concentration
- *  and the strict variance check would always reject. */
-export function isResourceHealthySoft(
-  health: ResourceHealth[],
-  hexes: Hex[],
-): boolean {
-  const tilesByResource = new Map<string, Hex[]>();
-  for (const h of hexes) {
-    if (h.resource === 'desert') continue;
-    if (!tilesByResource.has(h.resource)) tilesByResource.set(h.resource, []);
-    tilesByResource.get(h.resource)!.push(h);
-  }
-  for (const h of health) {
-    const tiles = tilesByResource.get(h.resource) ?? [];
-    if (h.totalPips < Math.ceil(tiles.length * 1.7)) return false;
-    const hasHighYield = tiles.some(t => t.number !== null && HIGH_YIELD_NUMBERS.has(t.number));
-    if (!hasHighYield) return false;
-  }
-  return true;
-}
-
 /** True if the board's pip yield is reasonably distributed across its 4
  *  quadrants — fails when high-yield numbers cluster into a "super
  *  continent" leaving the rest of the map productively dead. Threshold:
@@ -1325,47 +1298,4 @@ export function findWealthGapAxis(hexes: Hex[]):
     }
   }
   return best;
-}
-
-/** Hot-zone challenge predicate: connected red-number (6/8) cluster reaches
- *  the per-board-size minimum — 4 for the 19-hex base board, 5 for the
- *  30-hex expansion. Requires the noRedAdjacency hard constraint to be
- *  relaxed at generation time — generate.ts must pass allowRedAdjacency
- *  =true to checkHardConstraints when this flavor is active. Without that,
- *  the board can't produce adjacent reds and this predicate always fails.
- */
-export function hasHotZone(hexes: Hex[]): boolean {
-  const MIN_CLUSTER = hexes.length <= 19 ? 4 : 5;
-  const RED = new Set([6, 8]);
-  const byKey = new Map(hexes.map(h => [`${h.q},${h.r}`, h] as const));
-  const redHexes = hexes.filter(h => h.number !== null && RED.has(h.number));
-  if (redHexes.length < MIN_CLUSTER) return false;
-  const visited = new Set<string>();
-  for (const start of redHexes) {
-    const startKey = `${start.q},${start.r}`;
-    if (visited.has(startKey)) continue;
-    // BFS through red-only neighbors.
-    let size = 0;
-    const queue: Hex[] = [start];
-    visited.add(startKey);
-    while (queue.length) {
-      const cur = queue.shift()!;
-      size++;
-      const nbCoords = [
-        { q: cur.q + 1, r: cur.r }, { q: cur.q + 1, r: cur.r - 1 },
-        { q: cur.q, r: cur.r - 1 }, { q: cur.q - 1, r: cur.r },
-        { q: cur.q - 1, r: cur.r + 1 }, { q: cur.q, r: cur.r + 1 },
-      ];
-      for (const c of nbCoords) {
-        const key = `${c.q},${c.r}` as const;
-        if (visited.has(key)) continue;
-        const nb = byKey.get(key);
-        if (!nb || nb.number === null || !RED.has(nb.number)) continue;
-        visited.add(key);
-        queue.push(nb);
-      }
-    }
-    if (size >= MIN_CLUSTER) return true;
-  }
-  return false;
 }

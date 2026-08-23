@@ -199,7 +199,7 @@ function placeNumbers(
       if (s.number !== null) return false;
       const ns = hexNeighbors(s, byKey);
       if (!opts.allowRedAdjacency && isRed && ns.some(n => n.number !== null && RED_NUMBERS.has(n.number))) return false;
-      if (violatesTripleHighYield(s, num, hexes)) return false;
+      if (violatesTripleHighYield(s, hexes)) return false;
       if (opts.noSameNumberAdjacent && ns.some(n => n.number === num)) return false;
       if (opts.noSameNumberOnResource && resourcesAlreadyWithNum.has(s.resource)) return false;
       if (opts.noMultipleRedsOnResource && isRed && (redCountByResource.get(s.resource) ?? 0) >= redCap) return false;
@@ -285,7 +285,7 @@ function placeNumbers(
   return true;
 }
 
-function violatesTripleHighYield(target: Hex, proposedNumber: number, hexes: Hex[]): boolean {
+function violatesTripleHighYield(target: Hex, hexes: Hex[]): boolean {
   const byKey = buildHexIndex(hexes);
   const nbs = hexNeighbors(target, byKey);
   const highNbs = nbs.filter(n => n.number !== null && HIGH_YIELD_NUMBERS.has(n.number));
@@ -299,7 +299,7 @@ function violatesTripleHighYield(target: Hex, proposedNumber: number, hexes: Hex
         (dq === 1 && dr === 0) || (dq === -1 && dr === 0) ||
         (dq === 0 && dr === 1) || (dq === 0 && dr === -1) ||
         (dq === 1 && dr === -1) || (dq === -1 && dr === 1);
-      if (adj && proposedNumber !== 0) return true;
+      if (adj) return true;
     }
   }
   return false;

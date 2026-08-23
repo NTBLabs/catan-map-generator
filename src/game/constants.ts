@@ -62,13 +62,6 @@ export function boardFor(playerCount: PlayerCount): BoardSpec {
   return playerCount <= 4 ? BASE_BOARD : EXPANSION_BOARD;
 }
 
-export const MIN_PIPS_PER_RESOURCE: Record<PlayerCount, number> = {
-  3: 6,
-  4: 7,
-  5: 9,
-  6: 10,
-};
-
 // Per-player-count cap on the snake-draft fairness stdev for a map to be
 // accepted (no fallback). 1.0 is loose enough that challenge modes
 // (scarcity / boom-or-bust / drought) — which by design create imbalanced
