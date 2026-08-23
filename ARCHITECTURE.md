@@ -153,16 +153,26 @@ The naive options each fail one requirement:
 - **CSS `transform` on the `<svg>` only** — fast (GPU composite) but iOS Safari keeps the bitmap stretched after `will-change` is cleared, so the static zoom-in view stays blurry.
 - **SVG-native `transform` on an inner `<g>` only** — sharp at any zoom but re-rasterizes ~150 vector nodes per frame, which lags visibly on both iOS and 4K Chrome during active gestures.
 
-The solution is a **hybrid** that swaps modes at gesture boundaries (`enterCSSMode` / `exitCSSMode` in `Board.tsx`):
+The solution is a **hybrid** that swaps modes at gesture boundaries (`acquire` / `release` in `src/ui/panZoom.ts`; `Board.tsx` owns only the event binding, the rAF coalescing, and the wheel idle timer):
 
 - During an active gesture: clear the inner group's SVG transform, apply CSS transform on the outer `<svg>` (with `will-change: transform`). Fast bitmap composite.
 - On gesture end: clear the CSS transform, apply the equivalent SVG matrix transform on the inner group. Browser re-renders vector at the resting zoom. Sharp.
 
 The math is set up so both modes produce the same visual position, and the browser batches both DOM writes into one frame so the user never sees a jump.
 
+### Exclusivity is enforced, not assumed
+
+The equivalence above is real and load-bearing, but it only buys an invisible swap if **exactly one mode is applied at a time**. The two transforms are not alternatives that the browser picks between: applied together they **compose**, and the board renders at **scale²**.
+
+Originally nothing enforced that. Three gestures can each want CSS mode (drag, pinch, wheel) and each ends on its own signal, and the wheel's signal is a bare 200 ms idle timer that can expire in the middle of a drag. When it did, it installed the group matrix under a live drag; the drag's next frame wrote the CSS transform back on top; the board jumped to scale² until the pointer came up, at which point the drag's own gesture-end restored the correct single transform. That is the pan/zoom drag-jump bug: intermittent, desktop-only (touch produces no wheel events), and only visible once zoomed, because at identity the SVG transform is removed outright and there is nothing to compose against.
+
+CSS mode is now held by a **set of gesture keys** in `panZoom.ts`. It is active if and only if the set is non-empty, a gesture releasing its own key cannot end a mode another gesture still holds, and acquire/release are idempotent per key. The reset paths (double-click, the ⟲ button) clear the set outright rather than decrementing, which is correct for a path that never acquired.
+
+A **set, not a counter**, on purpose. A counter can underflow, and an underflowed counter never returns to zero, which strands the board in CSS mode for the rest of the session. That failure is silent on desktop and shows up only as the iOS stale-bitmap blur this whole pipeline exists to prevent, which is the worse of the two bugs and the one a fix here can most easily introduce. With a set the hazard cannot be expressed. A dev-only watchdog in `panZoom.ts` warns if any hold outlives `STRANDED_HOLD_MS`, for the case where a future edit adds an acquire whose release is unreachable.
+
 Other performance details in the same pipeline:
 
-- **`viewRef` stores x/y/scale in SVG user units**, not pixels. Drag deltas come from `useGesture` in pixels and are converted via `px2unit()`. This keeps the math consistent across the CSS↔SVG swap.
+- **The view stores x/y/scale in SVG user units**, not pixels, in `panZoom.ts`. Drag deltas come from `useGesture` in pixels and are converted via the geometry's `pxPerUnit`. This keeps the math consistent across the CSS↔SVG swap. Deltas are never divided by `scale`: CSS `translate` sits left of `scale`, so it applies in the post-scale parent space and maps 1:1 to screen pixels at any zoom.
 - **`ResizeObserver`-cached container bounds.** `getBoundingClientRect()` would trigger a forced layout flush every gesture frame.
 - **`requestAnimationFrame` coalescing.** Some pointer devices fire pointermove > 120Hz; without coalescing each event triggers its own style mutation + paint.
 - **`translate3d(x, y, 0)`** instead of 2D `translate(x, y)`. Guarantees a dedicated GPU compositor layer across all browsers.

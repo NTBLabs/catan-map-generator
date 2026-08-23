@@ -79,6 +79,9 @@ src/
     store.ts        Zustand store. playerCount, variants, view toggles, generate(), loadFromUrl()
   ui/
     Board.tsx       Inline SVG board, pan/zoom/rotate, scenario overlays, pick overlay. 1429 lines.
+    panZoom.ts      Headless pan/zoom controller. Owns the view state, both transform
+                    writers, and the hold set that keeps CSS and SVG mode exclusive.
+                    DOM writes are injected, so it is testable without a DOM.
     Controls.tsx    Bottom drawer, all options, share dialog, diagnostics panels. 852 lines.
     TileIcon.tsx    Tile art and port glyphs
     exportImage.ts  SVG to PNG export by copying computed styles onto a clone

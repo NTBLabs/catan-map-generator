@@ -1,11 +1,12 @@
 import { useGesture } from '@use-gesture/react';
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useAppStore } from '../state/store';
 import { axialToPixel, hexCorner, neighbors } from '../game/coords';
 import { PIP_VALUE, RED_NUMBERS } from '../game/constants';
 import { findHotZoneCluster, findWealthGapAxis } from '../generator/score';
 import type { Hex, Port, PortType } from '../game/types';
 import { PortGlyph, TileArt } from './TileIcon';
+import { createPanZoom, type PanZoom } from './panZoom';
 
 function hexPath(hex: Hex): string {
   const pts: string[] = [];
@@ -313,9 +314,14 @@ function pipDots(n: number, cx: number, cy: number): JSX.Element[] {
   ));
 }
 
-const MIN_SCALE = 0.6;
-const MAX_SCALE = 3;
-const RESET = { x: 0, y: 0, scale: 1 } as const;
+// Idle gap after the last wheel tick before the wheel gesture is considered
+// over. This is the wheel's ONLY release signal, which is why onDrag has to
+// release the hold itself when it cancels the timer.
+const WHEEL_IDLE_MS = 200;
+// Dev-only poll for the leaked-hold diagnostic in panZoom.ts. Covers the case
+// where a hold strands and the user never touches the board again, so no
+// gesture-driven check would ever run.
+const STRANDED_POLL_MS = 5000;
 
 export function Board() {
   const map = useAppStore(s => s.map);
@@ -334,9 +340,9 @@ export function Board() {
   // keeps a stretched bitmap of the SVG layer after CSS transform — which is
   // exactly the "still blurry when zoomed in and idle" complaint we saw.
   //
-  // viewRef stores x, y, scale in SVG user units (NOT pixels), so the same
-  // numbers map cleanly into both transform spaces. Drag deltas come from
-  // useGesture in pixels and are converted via pxPerUnit().
+  // The view state, the two transform writers, and the rule that decides which
+  // mode is live all live in panZoom.ts. This file owns only the gesture
+  // plumbing: event binding, rAF coalescing, and the wheel idle timer.
   // Scenario overlays — visible whenever the rolled flavor is wealthGap or
   // hotZone, regardless of analyze toggle. The whole point of these scenarios
   // is being able to SEE the contested region / wealth divide; hiding them
@@ -351,7 +357,6 @@ export function Board() {
     return findWealthGapAxis(map.hexes);
   }, [map, rolledFlavor]);
 
-  const viewRef = useRef<{ x: number; y: number; scale: number }>({ ...RESET });
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const panZoomRef = useRef<SVGGElement>(null);
@@ -430,90 +435,98 @@ export function Board() {
     return pts;
   }, [map, waterFrame]);
 
-  // Pixels-per-user-unit at the current container size. preserveAspectRatio
-  // "xMidYMid meet" fits the viewBox to the SMALLER dimension of the container,
-  // so min(w, h) is the relevant scale factor.
-  const px2unit = useCallback(() => {
-    const { width, height } = boundsRef.current;
-    if (!width || !height) return 1;
-    return Math.min(width, height) / (2 * viewBoxR);
-  }, [viewBoxR]);
+  // Board geometry the controller reads on every write. Assigned during
+  // render (not in an effect) so a regenerated map, which can change viewBoxR
+  // via the wealthGap label reach, is picked up on the very next frame rather
+  // than one frame late.
+  const geomRef = useRef({ viewBoxR, boardCx, boardCy });
+  geomRef.current = { viewBoxR, boardCx, boardCy };
 
-  // Clamp in SVG user units. Allows panning up to ±R*scale in each axis,
-  // which keeps at least half the board on screen at any zoom level.
-  const clamp = useCallback((next: { x: number; y: number; scale: number }) => {
-    const max = viewBoxR * next.scale;
-    return {
-      scale: next.scale,
-      x: Math.max(-max, Math.min(max, next.x)),
-      y: Math.max(-max, Math.min(max, next.y)),
-    };
-  }, [viewBoxR]);
+  // Built once and never rebuilt: it reads geometry and the DOM nodes through
+  // getters, so nothing about it goes stale when the map or container changes.
+  const panZoomStore = useRef<PanZoom>();
+  if (!panZoomStore.current) {
+    panZoomStore.current = createPanZoom({
+      handle: () => {
+        const svg = svgRef.current;
+        const g = panZoomRef.current;
+        if (!svg || !g) return null;
+        return {
+          setCSSTransform: v => { svg.style.transform = v; },
+          setWillChange: v => { svg.style.willChange = v; },
+          setSVGTransform: v => {
+            if (v === null) g.removeAttribute('transform');
+            else g.setAttribute('transform', v);
+          },
+        };
+      },
+      geometry: () => {
+        const { viewBoxR: r, boardCx: cx, boardCy: cy } = geomRef.current;
+        // Pixels-per-user-unit at the current container size.
+        // preserveAspectRatio "xMidYMid meet" fits the viewBox to the SMALLER
+        // dimension of the container, so min(w, h) is the relevant factor.
+        const { width, height } = boundsRef.current;
+        const pxPerUnit = !width || !height ? 1 : Math.min(width, height) / (2 * r);
+        return { viewBoxR: r, boardCx: cx, boardCy: cy, pxPerUnit };
+      },
+      dev: import.meta.env.DEV,
+    });
+  }
+  const panZoom = panZoomStore.current;
 
-  // CSS transform on the outer <svg>. Fast bitmap composite, used during an
-  // active gesture. Panning is in pixels here (CSS unit), so multiply x/y
-  // (stored in SVG user units) by pxPerUnit.
-  const applyCSSTransform = useCallback((next: { x: number; y: number; scale: number }) => {
-    viewRef.current = next;
-    const svg = svgRef.current;
-    if (!svg) return;
-    const k = px2unit();
-    svg.style.transform = `translate3d(${next.x * k}px, ${next.y * k}px, 0) scale(${next.scale})`;
-  }, [px2unit]);
-
-  // SVG-native transform on the inner <g>. Vector re-render — sharp at any
-  // zoom. Used after a gesture ends (one-time write, not per-frame).
-  // Scale pivots around the viewBox center (boardCx, boardCy) to match the
-  // CSS transform's `transform-origin: center center` behavior.
-  const applySVGTransform = useCallback((next: { x: number; y: number; scale: number }) => {
-    viewRef.current = next;
-    const g = panZoomRef.current;
-    if (!g) return;
-    if (next.x === 0 && next.y === 0 && next.scale === 1) {
-      g.removeAttribute('transform');
-    } else {
-      const tx = next.x + boardCx * (1 - next.scale);
-      const ty = next.y + boardCy * (1 - next.scale);
-      g.setAttribute('transform', `matrix(${next.scale} 0 0 ${next.scale} ${tx} ${ty})`);
+  // Cancel every pending frame and timer on unmount. Without this a queued rAF
+  // or the wheel idle timer can fire against torn-down refs.
+  useEffect(() => () => {
+    for (const ref of [wheelRafRef, dragRafRef, pinchRafRef]) {
+      if (ref.current != null) {
+        window.cancelAnimationFrame(ref.current);
+        ref.current = null;
+      }
     }
-  }, [boardCx, boardCy]);
-
-  // Switch from SVG-mode (resting) to CSS-mode (active gesture). Clear the
-  // inner <g>'s transform and write the equivalent CSS transform on the
-  // <svg>. The browser batches both writes so the visual position is
-  // identical across the swap — no jump for the user.
-  const enterCSSMode = useCallback(() => {
-    if (panZoomRef.current) panZoomRef.current.removeAttribute('transform');
-    if (svgRef.current) svgRef.current.style.willChange = 'transform';
-    applyCSSTransform(viewRef.current);
-  }, [applyCSSTransform]);
-
-  // Switch from CSS-mode (active gesture) back to SVG-mode (resting). Clear
-  // the <svg>'s CSS transform, apply the equivalent SVG transform on the
-  // inner <g>. Same atomicity / no-jump guarantee.
-  const exitCSSMode = useCallback(() => {
-    const svg = svgRef.current;
-    if (svg) {
-      svg.style.transform = '';
-      svg.style.willChange = '';
+    if (wheelIdleRef.current != null) {
+      window.clearTimeout(wheelIdleRef.current);
+      wheelIdleRef.current = null;
     }
-    applySVGTransform(viewRef.current);
-  }, [applySVGTransform]);
+  }, []);
+
+  // Dev-only leaked-hold watchdog. A stranded hold is silent on desktop and
+  // only shows up as the iOS stale-bitmap blur, so it needs an active check
+  // rather than waiting to be noticed.
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    const id = window.setInterval(() => panZoom.checkStranded(), STRANDED_POLL_MS);
+    return () => window.clearInterval(id);
+  }, [panZoom]);
 
   useGesture(
     {
       onDrag: ({ delta: [dxPx, dyPx], first, last }) => {
-        const k = px2unit();
-        if (k <= 0) return;
-        if (first) enterCSSMode();
-        const cur = viewRef.current;
+        if (first) {
+          // Acquire BEFORE releasing the wheel below. Reversed, releasing the
+          // wheel's last hold would swap to SVG mode and the acquire would
+          // immediately swap back: two wasted DOM writes for no reason.
+          panZoom.acquire('drag');
+          // A wheel burst's idle timer is the wheel's ONLY release. Cancelling
+          // it without releasing the hold would make that release unreachable
+          // and strand the board in CSS mode for the rest of the session, so
+          // the two happen together or not at all.
+          if (wheelIdleRef.current != null) {
+            window.clearTimeout(wheelIdleRef.current);
+            wheelIdleRef.current = null;
+            panZoom.release('wheel');
+          }
+          if (wheelRafRef.current != null) {
+            window.cancelAnimationFrame(wheelRafRef.current);
+            wheelRafRef.current = null;
+          }
+        }
         // Convert finger pixel delta → SVG-unit delta so the math stays
         // consistent across the CSS ↔ SVG transform swap at gesture end.
-        viewRef.current = { ...cur, x: cur.x + dxPx / k, y: cur.y + dyPx / k };
+        panZoom.panByPixels(dxPx, dyPx);
         if (dragRafRef.current == null) {
           dragRafRef.current = window.requestAnimationFrame(() => {
             dragRafRef.current = null;
-            applyCSSTransform(clamp(viewRef.current));
+            panZoom.render();
           });
         }
         if (last) {
@@ -521,18 +534,16 @@ export function Board() {
             window.cancelAnimationFrame(dragRafRef.current);
             dragRafRef.current = null;
           }
-          viewRef.current = clamp(viewRef.current);
-          exitCSSMode();
+          panZoom.release('drag');
         }
       },
       onPinch: ({ offset: [s], first, last }) => {
-        if (first) enterCSSMode();
-        const scale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, s));
-        viewRef.current = { ...viewRef.current, scale };
+        if (first) panZoom.acquire('pinch');
+        panZoom.setPinchScale(s);
         if (pinchRafRef.current == null) {
           pinchRafRef.current = window.requestAnimationFrame(() => {
             pinchRafRef.current = null;
-            applyCSSTransform(clamp(viewRef.current));
+            panZoom.render();
           });
         }
         if (last) {
@@ -540,22 +551,20 @@ export function Board() {
             window.cancelAnimationFrame(pinchRafRef.current);
             pinchRafRef.current = null;
           }
-          viewRef.current = clamp(viewRef.current);
-          exitCSSMode();
+          panZoom.release('pinch');
         }
       },
       onWheel: ({ event, delta: [, dy] }) => {
         event.preventDefault();
-        // First wheel tick after idle → enter CSS mode. The idle timer below
-        // will bounce us back to SVG mode ~200ms after the last tick.
-        if (wheelIdleRef.current == null) enterCSSMode();
-        const cur = viewRef.current;
-        const nextScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, cur.scale - dy * 0.002));
-        viewRef.current = { ...cur, scale: nextScale };
+        // Idempotent per key, so this runs unconditionally on every tick
+        // rather than being guarded on the idle timer being unset. The idle
+        // timer below is what releases it, ~200ms after the last tick.
+        panZoom.acquire('wheel');
+        panZoom.zoomByWheel(dy);
         if (wheelRafRef.current == null) {
           wheelRafRef.current = window.requestAnimationFrame(() => {
             wheelRafRef.current = null;
-            applyCSSTransform(clamp(viewRef.current));
+            panZoom.render();
           });
         }
         if (wheelIdleRef.current != null) window.clearTimeout(wheelIdleRef.current);
@@ -565,17 +574,17 @@ export function Board() {
             window.cancelAnimationFrame(wheelRafRef.current);
             wheelRafRef.current = null;
           }
-          viewRef.current = clamp(viewRef.current);
-          exitCSSMode();
-        }, 200);
+          // If a drag started during the burst it still holds CSS mode, and
+          // this hands off to it instead of swapping out from under it.
+          panZoom.release('wheel');
+        }, WHEEL_IDLE_MS);
       },
       onDoubleClick: () => {
-        // Cancel any in-flight gesture state and snap to identity in SVG mode.
-        if (svgRef.current) {
-          svgRef.current.style.transform = '';
-          svgRef.current.style.willChange = '';
-        }
-        applySVGTransform({ ...RESET });
+        // Force every hold off and snap to identity in SVG mode. Forcing, not
+        // releasing: this path never acquired, so a decrement here would
+        // underflow. A gesture that is still live re-asserts SVG mode when it
+        // ends, which is a no-op.
+        panZoom.reset();
       },
     },
     {
@@ -1042,13 +1051,7 @@ export function Board() {
         </button>
         <button
           className="board__btn"
-          onClick={() => {
-            if (svgRef.current) {
-              svgRef.current.style.transform = '';
-              svgRef.current.style.willChange = '';
-            }
-            applySVGTransform({ ...RESET });
-          }}
+          onClick={() => panZoom.reset()}
           aria-label="Reset pan and zoom"
           title="Reset pan/zoom (or double-tap board)"
         >
