@@ -40,12 +40,6 @@ interface AppState {
   waterFrame: boolean;
   /** View-only rotation in degrees (0, 60, 120, ...). Not persisted. */
   rotation: number;
-  /** Mobile options drawer open state. Lives in the store rather than in
-   *  Controls because Board reacts to it too: an open drawer covers most of
-   *  the board, so Board lifts its container to keep the top tile row
-   *  visible (see openLiftPx in ui/drawerMetrics.ts). Meaningless on
-   *  desktop, where the panel is always visible. */
-  drawerOpen: boolean;
   generating: boolean;
   fellBack: boolean;
   attempts: number;
@@ -59,7 +53,6 @@ interface AppState {
   toggleWaterFrame: () => void;
   rotateBy: (delta: number) => void;
   resetRotation: () => void;
-  setDrawerOpen: (open: boolean) => void;
   generate: () => void;
   loadFromUrl: (encoded: string) => boolean;
 }
@@ -107,7 +100,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   showAdvancedDiagnostics: false,
   waterFrame: true,
   rotation: 0,
-  drawerOpen: false,
   generating: false,
   fellBack: false,
   attempts: 0,
@@ -137,7 +129,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   toggleWaterFrame: () => set(s => ({ waterFrame: !s.waterFrame })),
   rotateBy: (delta) => set(s => ({ rotation: (((s.rotation + delta) % 360) + 360) % 360 })),
   resetRotation: () => set({ rotation: 0 }),
-  setDrawerOpen: (open) => set({ drawerOpen: open }),
 
   generate: () => {
     set({ generating: true });

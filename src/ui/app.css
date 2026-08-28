@@ -96,9 +96,6 @@
      in landscape). Desktop resets this: there the controls are a side panel
      and the bottom of the viewport is really available. */
   bottom: var(--drawer-peek);
-  /* Matches the drawer's 0.28s snap so the open-drawer lift (inline top and
-     bottom written by Board.tsx) travels with the sheet instead of jumping. */
-  transition: top 0.28s ease, bottom 0.28s ease;
   overflow: hidden;
   touch-action: none;
   /* Scope paint/layout work to this subtree — tells the browser it doesn't
@@ -307,33 +304,8 @@
   display: block;
 }
 
-/* Always-visible drawer header: Generate plus the status line. The collapsed
-   peek is MEASURED from .controls__head (handle + this row) in Controls.tsx,
-   so heights in here must not depend on state — which is why the status line
-   below pins its height. */
-.controls__header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 0 16px 10px;
-}
-
-/* The generation status line. height is FIXED (not min-height) and the text
-   is forced to one non-wrapping line: the measured peek, and therefore the
-   board's bottom inset, must be identical across idle / generating / done /
-   best-effort. tests/drawer-status.test.ts asserts this rule keeps that
-   shape. */
-.controls__status {
-  flex: 1 1 0;
-  min-width: 0;
-  height: 20px;
-  line-height: 20px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--catan-brown-mid);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.controls__row--primary {
+  margin-top: 0;
 }
 
 .controls__row {
@@ -488,13 +460,6 @@
 @keyframes spinner-spin {
   to { transform: rotate(360deg); }
 }
-/* Static fallback: the broken ring still reads as "in progress" and the
-   adjacent text carries the state; only the motion goes. */
-@media (prefers-reduced-motion: reduce) {
-  .spinner {
-    animation: none;
-  }
-}
 .btn--secondary {
   background: var(--catan-gold);
   color: var(--catan-brown-dark);
@@ -518,21 +483,17 @@
   transform: translateY(1px);
 }
 
-/* Share control: one button that opens a modal action sheet (copy link /
-   save-share image). */
+/* Share control: a single icon button that opens a modal action sheet
+   (copy link / save-share image). */
+.share {
+  display: flex;
+}
 .share__btn {
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0;
   width: 48px;
-}
-/* Body placement: the share action reads as a labeled button there, not a
-   bare icon squeezed beside Generate (its pre-restructure home). */
-.share__btn--labeled {
-  width: auto;
-  padding: 0 16px;
-  gap: 8px;
 }
 
 /* Full-screen dimming scrim. Portaled to <body>, so it always covers the
