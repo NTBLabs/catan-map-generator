@@ -407,19 +407,6 @@ export function Controls() {
         </div>
       )}
 
-      <div className="controls__group">
-        <div className="controls__row">
-          <label className="toggle">
-            <input type="checkbox" checked={showResourceHealth} onChange={toggleShowResourceHealth} />
-            Show resource distribution
-          </label>
-        </div>
-        <p className="help">
-          Per-resource health readout (pip totals, concentration, healthy/warning/unhealthy dot) plus the simulated snake-draft fairness panel.
-        </p>
-        {showResourceHealth && scored && <ResourceHealthPanel />}
-      </div>
-
       <div className="controls__row">
         <span className="controls__label">Players</span>
         <div className="seg" role="radiogroup" aria-label="Player count">
@@ -435,6 +422,19 @@ export function Controls() {
             </button>
           ))}
         </div>
+      </div>
+
+      <div className="controls__group">
+        <div className="controls__row">
+          <label className="toggle">
+            <input type="checkbox" checked={showResourceHealth} onChange={toggleShowResourceHealth} />
+            Show resource distribution
+          </label>
+        </div>
+        <p className="help">
+          Per-resource health readout (pip totals, concentration, healthy/warning/unhealthy dot) plus the simulated snake-draft fairness panel.
+        </p>
+        {showResourceHealth && scored && <ResourceHealthPanel />}
       </div>
 
       <div className="controls__group">
