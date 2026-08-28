@@ -198,14 +198,12 @@ export function Controls() {
   // measured off a throwaway probe element styled with the variable. The
   // probe mounts INSIDE the drawer, because the notice-state swap lives on
   // .app and a body-mounted probe would only ever see the :root default.
-  // Re-measured on resize and orientation change (the inset differs by
-  // orientation) and when the notice state flips; a resting collapsed
-  // drawer is re-glued to the new offset each time.
+  // peekRef feeds ONLY the drag clamp math (closedOffset): the resting
+  // collapsed position is CSS-owned (see .controls--closed in app.css) and
+  // needs no JS, which is what keeps it correct while iOS Safari settles
+  // its chrome. Re-measured on resize/orientation and the notice flip so
+  // the next drag clamps against current numbers.
   const peekRef = useRef(106);
-  const openRef = useRef(open);
-  openRef.current = open;
-  const isMobileRef = useRef(isMobile);
-  isMobileRef.current = isMobile;
 
   useLayoutEffect(() => {
     if (typeof window === 'undefined') return;
@@ -219,9 +217,6 @@ export function Controls() {
       const h = probe.getBoundingClientRect().height;
       probe.remove();
       if (h > 0) peekRef.current = h;
-      if (isMobileRef.current && !openRef.current) {
-        el.style.transform = `translateY(${Math.max(0, el.offsetHeight - peekRef.current)}px)`;
-      }
     };
     measure();
     window.addEventListener('resize', measure);
@@ -251,7 +246,12 @@ export function Controls() {
       return;
     }
     el.style.transition = 'transform 0.28s ease';
-    el.style.transform = open ? 'translateY(0)' : `translateY(${closedOffset()}px)`;
+    // Open is a fixed, viewport-independent position. Closed is CSS-owned
+    // (the .controls--closed rule), so CLEARING the inline transform hands
+    // the resting position to the live calc; the transition still animates
+    // the handoff because transitions ease computed-value changes wherever
+    // the value comes from.
+    el.style.transform = open ? 'translateY(0)' : '';
   }, [open, isMobile]);
 
   useGesture(
@@ -277,7 +277,10 @@ export function Controls() {
               ? false
               : targetY < closedY / 2;
           el.style.transition = 'transform 0.28s ease';
-          el.style.transform = nextOpen ? 'translateY(0)' : `translateY(${closedY}px)`;
+          // Release-to-closed clears the inline transform: the transition
+          // runs from the finger's last offset to the CSS-owned resting
+          // calc, so the snap stays continuous (see .controls--closed).
+          el.style.transform = nextOpen ? 'translateY(0)' : '';
           if (nextOpen !== open) setOpen(nextOpen);
         } else {
           el.style.transform = `translateY(${targetY}px)`;

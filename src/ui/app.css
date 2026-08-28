@@ -250,8 +250,20 @@
   display: flex;
   flex-direction: column;
   max-height: 75dvh;
-  /* Initial visual state before the first useLayoutEffect runs is closed —
-     prevents a flash of fully-open drawer on cold load. */
+}
+
+/* The RESTING collapsed position is CSS-owned and live: the calc() tracks
+   dvh, the safe-area inset, and the has-notice peek swap as iOS Safari's
+   chrome settles or collapses. The previous design froze this into an
+   inline pixel transform in a mount effect, snapshotting 75dvh before
+   Safari settled its bottom bar, which clipped the peek behind the bar
+   until the next re-measure. Inline transforms are now written only during
+   an active drag (when the viewport is stable under the finger) and for
+   the open state; release-to-closed clears them so this rule takes back
+   over. Doubles as the pre-mount anti-flash: the first render already
+   carries controls--closed on phones. Desktop never gets the class, so
+   the side panel is untouched. */
+.controls.controls--closed {
   transform: translateY(calc(75dvh - var(--drawer-peek)));
 }
 
