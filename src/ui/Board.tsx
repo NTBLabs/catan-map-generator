@@ -2,6 +2,7 @@ import { useGesture } from '@use-gesture/react';
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { useAppStore } from '../state/store';
 import { MOBILE_QUERY, openLiftPx } from './openLift';
+import { resetView } from './resetView';
 import { axialToPixel, hexCorner, neighbors } from '../game/coords';
 import { PIP_VALUE, RED_NUMBERS } from '../game/constants';
 import { findHotZoneCluster, findWealthGapAxis } from '../generator/score';
@@ -627,8 +628,10 @@ export function Board() {
         // Force every hold off and snap to identity in SVG mode. Forcing, not
         // releasing: this path never acquired, so a decrement here would
         // underflow. A gesture that is still live re-asserts SVG mode when it
-        // ends, which is a no-op.
-        panZoom.reset();
+        // ends, which is a no-op. Resets the WHOLE view (rotation included)
+        // so it stays equivalent to the ⟲ button, as that button's title
+        // promises.
+        resetView(panZoom, resetRotation);
       },
     },
     {
@@ -1097,9 +1100,9 @@ export function Board() {
         </button>
         <button
           className="board__btn"
-          onClick={() => panZoom.reset()}
-          aria-label="Reset pan and zoom"
-          title="Reset pan/zoom (or double-tap board)"
+          onClick={() => resetView(panZoom, resetRotation)}
+          aria-label="Reset view"
+          title="Reset view (or double-tap board)"
         >
           ⟲
         </button>
