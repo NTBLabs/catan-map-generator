@@ -1088,26 +1088,31 @@ export function Board() {
             semantics and label. The readout and the pan/zoom reset stay
             separate siblings to the right. */}
         <div className="board__rotate" role="group" aria-label="Rotate board">
-          {/* Plain arrows matched to the board's APPARENT motion: rotateBy(-30)
-              is counter-clockwise in SVG's y-down space, which moves the
-              board's top edge LEFT, so the left button carries ←. The old
-              circular glyphs read as direction labels pointing the wrong way
-              and collided with the reset control's circular glyph. */}
+          {/* The arrows describe the board's NEAR-EDGE motion: this cluster
+              sits at the BOTTOM of the board, so the motion the eye tracks
+              from here is the bottom edge's. rotateBy(-30) is
+              counter-clockwise (verified in rendered pixels: the top edge
+              moves left), which sweeps the bottom edge RIGHT, and on device
+              that reads as the board turning right, so -30 carries the
+              right arrow. A previous mapping anchored on the TOP edge and
+              read inverted on the phone; the rotation math itself is
+              correct and unchanged, so do not "fix" this back by deriving
+              from the top edge again. */}
           <button
             className="board__rotate-btn"
             onClick={() => rotateBy(-30)}
-            aria-label="Rotate left"
-            title="Rotate 30° left"
-          >
-            ←
-          </button>
-          <button
-            className="board__rotate-btn"
-            onClick={() => rotateBy(30)}
             aria-label="Rotate right"
             title="Rotate 30° right"
           >
             →
+          </button>
+          <button
+            className="board__rotate-btn"
+            onClick={() => rotateBy(30)}
+            aria-label="Rotate left"
+            title="Rotate 30° left"
+          >
+            ←
           </button>
         </div>
         <button
