@@ -1066,32 +1066,42 @@ export function Board() {
         </g>
       </svg>
       <div className="board__view-controls">
-        <button
-          className="board__btn"
-          onClick={() => rotateBy(-30)}
-          aria-label="Rotate counter-clockwise"
-          title="Rotate 30° counter-clockwise"
-        >
-          ↺
-        </button>
+        {/* The two nudges are one control (a pair in a shared pill); the
+            degree readout doubles as the reset and disables at 0°, where
+            resetting is a no-op. The pan/zoom reset is a separate concern
+            and sits apart behind a wider gap. */}
+        <div className="board__rotate" role="group" aria-label="Rotate board">
+          <button
+            className="board__rotate-btn"
+            onClick={() => rotateBy(-30)}
+            aria-label="Rotate counter-clockwise"
+            title="Rotate 30° counter-clockwise"
+          >
+            ↺
+          </button>
+          <button
+            className="board__rotate-btn"
+            onClick={() => rotateBy(30)}
+            aria-label="Rotate clockwise"
+            title="Rotate 30° clockwise"
+          >
+            ↻
+          </button>
+        </div>
         <button
           className="board__btn board__btn--label"
           onClick={resetRotation}
-          aria-label="Reset rotation"
-          title="Reset rotation"
+          disabled={rotation === 0}
+          aria-label="Reset rotation to 0°"
+          title="Reset rotation to 0°"
         >
           {rotation}<span className="board__btn-degree">°</span>
+          {/* The clear glyph is the non-color cue that the readout is now an
+              action; at 0° it is absent and the pill is a plain readout. */}
+          {rotation !== 0 && <span className="board__btn-clear" aria-hidden="true">×</span>}
         </button>
         <button
-          className="board__btn"
-          onClick={() => rotateBy(30)}
-          aria-label="Rotate clockwise"
-          title="Rotate 30° clockwise"
-        >
-          ↻
-        </button>
-        <button
-          className="board__btn"
+          className="board__btn board__btn--panzoom"
           onClick={() => panZoom.reset()}
           aria-label="Reset pan and zoom"
           title="Reset pan/zoom (or double-tap board)"

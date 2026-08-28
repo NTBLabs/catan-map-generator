@@ -161,6 +161,62 @@
   font-size: 0.9rem;
   font-variant-numeric: tabular-nums;
 }
+/* At 0° the readout is a plain readout: resetting is a no-op, so the button
+   disables. The missing clear glyph (not color) is what marks the state. */
+.board__btn--label:disabled {
+  opacity: 0.6;
+  cursor: default;
+  box-shadow: none;
+}
+.board__btn--label:disabled:active {
+  transform: none;
+}
+/* Clear glyph inside the readout-as-reset. The left margin is wide enough
+   (0.95em) that the zero-width hanging degree sign (see .board__btn-degree)
+   lands in the gap between numeral and glyph instead of overlapping it. */
+.board__btn-clear {
+  margin-left: 0.95em;
+  font-size: 0.9em;
+  opacity: 0.85;
+}
+
+/* The rotate nudges are one control: a shared pill with two halves and a
+   hairline divider, so the pair reads as a unit next to the readout/reset
+   rather than as two more sibling circles. */
+.board__rotate {
+  display: flex;
+  background: var(--catan-cream);
+  border: 2px solid var(--catan-gold);
+  border-radius: 999px;
+  box-shadow: var(--shadow-button);
+  overflow: hidden;
+}
+.board__rotate-btn {
+  width: 44px;
+  height: 44px;
+  border: none;
+  background: transparent;
+  color: var(--catan-brown-dark);
+  font-size: 1.3rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  font-family: inherit;
+}
+.board__rotate-btn + .board__rotate-btn {
+  border-left: 1px solid rgba(125, 75, 30, 0.35);
+}
+.board__rotate-btn:active {
+  transform: translateY(1px);
+}
+/* Pan/zoom reset is a different concern from rotation; the wider gap is the
+   grouping cue. */
+.board__btn--panzoom {
+  margin-left: 8px;
+}
 /* Zero-width, so the pill's flex centering sees only the numeral and the
    degree sign hangs into the right padding. Centering on the full string put
    the digits visually left of center. Width-independent on purpose: the
