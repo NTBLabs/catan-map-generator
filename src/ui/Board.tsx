@@ -371,6 +371,13 @@ export function Board() {
   // True while the current drag gesture started on the view-control
   // cluster; the whole gesture is then ignored by the pan handler.
   const dragFromControlsRef = useRef(false);
+  // Container rect captured at ZOOM gesture start (wheel burst start /
+  // pinch first). Anchored zoom needs the pointer relative to the element
+  // CENTER, and boundsRef only caches size: the open-drawer lift moves the
+  // container without resizing it, so position must be read per gesture,
+  // not per ResizeObserver tick. One layout read per gesture, not per
+  // frame.
+  const zoomRectRef = useRef<DOMRect | null>(null);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -550,7 +557,18 @@ export function Board() {
 
   useGesture(
     {
-      onDrag: ({ delta: [dxPx, dyPx], first, last, event }) => {
+      onDrag: ({ delta: [dxPx, dyPx], first, last, event, pinching, cancel }) => {
+        if (pinching) {
+          // Two fingers down: the pinch owns the board. Its per-frame
+          // midpoint anchoring already provides two-finger pan, so letting
+          // the drag keep panning with finger 1 double-applies motion and
+          // destroys the pinch anchor (measured ~200px of drift). Release
+          // any hold this drag took and cancel the gesture; release is
+          // safe when nothing was acquired.
+          panZoom.release('drag');
+          cancel();
+          return;
+        }
         if (first) {
           // A drag that BEGINS on the view-control cluster must never grab
           // the board (pressing a rotate nudge was panning the map under
@@ -598,9 +616,20 @@ export function Board() {
           panZoom.release('drag');
         }
       },
-      onPinch: ({ offset: [s], first, last }) => {
-        if (first) panZoom.acquire('pinch');
-        panZoom.setPinchScale(s);
+      onPinch: ({ offset: [s], origin: [ox, oy], first, last }) => {
+        if (first) {
+          panZoom.acquire('pinch');
+          zoomRectRef.current = containerRef.current?.getBoundingClientRect() ?? null;
+        }
+        // Anchor on the live midpoint of the two touches: each frame is its
+        // own fixed-point step, so a midpoint that moves between frames is
+        // tracked automatically.
+        const r = zoomRectRef.current;
+        panZoom.setPinchScaleAt(
+          s,
+          r ? ox - r.left - r.width / 2 : 0,
+          r ? oy - r.top - r.height / 2 : 0,
+        );
         if (pinchRafRef.current == null) {
           pinchRafRef.current = window.requestAnimationFrame(() => {
             pinchRafRef.current = null;
@@ -617,11 +646,22 @@ export function Board() {
       },
       onWheel: ({ event, delta: [, dy] }) => {
         event.preventDefault();
+        // The idle timer being unarmed marks the start of a wheel burst:
+        // capture the container rect once per burst for the anchor math.
+        if (wheelIdleRef.current == null) {
+          zoomRectRef.current = containerRef.current?.getBoundingClientRect() ?? null;
+        }
         // Idempotent per key, so this runs unconditionally on every tick
         // rather than being guarded on the idle timer being unset. The idle
         // timer below is what releases it, ~200ms after the last tick.
         panZoom.acquire('wheel');
-        panZoom.zoomByWheel(dy);
+        // Anchor on the cursor so the point under it stays put.
+        const r = zoomRectRef.current;
+        panZoom.zoomByWheelAt(
+          dy,
+          r ? event.clientX - r.left - r.width / 2 : 0,
+          r ? event.clientY - r.top - r.height / 2 : 0,
+        );
         if (wheelRafRef.current == null) {
           wheelRafRef.current = window.requestAnimationFrame(() => {
             wheelRafRef.current = null;

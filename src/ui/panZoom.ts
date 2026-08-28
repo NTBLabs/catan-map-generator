@@ -110,8 +110,15 @@ export interface PanZoom {
   /** Drop one hold. Swaps back to SVG mode only when the last one goes. */
   release(key: HoldKey): void;
   panByPixels(dxPx: number, dyPx: number): void;
+  /** Center-anchored zoom (scale-only change; the board's own center stays
+   *  put). Kept byte-identical for callers with no pointer position. */
   zoomByWheel(dy: number): void;
   setPinchScale(s: number): void;
+  /** Pointer-anchored zoom: the board point under the anchor stays fixed
+   *  on screen. (axPx, ayPx) are screen pixels relative to the ELEMENT
+   *  CENTER, the one origin both transform writers share. */
+  zoomByWheelAt(dy: number, axPx: number, ayPx: number): void;
+  setPinchScaleAt(s: number, axPx: number, ayPx: number): void;
   /** Clamp the view and write it in whichever mode is currently held. */
   render(): void;
   /** Force every hold off and snap to identity in SVG mode. */
@@ -195,6 +202,34 @@ export function createPanZoom(deps: PanZoomDeps): PanZoom {
     writeSVG(view);
   };
 
+  // Anchored zoom: change scale while the board point under the anchor
+  // stays fixed on screen. Derivation from the composed mapping
+  // p -> c + t + s(p - c) (c = element center, t = translation): holding
+  // M(p*) = A across s -> s' gives t' = a(1 - s'/s) + (s'/s)t with
+  // a = A - c, here already converted to user units. The scale is clamped
+  // BEFORE the translation is computed, so a tick that saturates at
+  // MIN/MAX cannot smear the anchor. The pan clamp still applies at
+  // render: at the bound the board pins and the anchor slides, keeping
+  // the at-least-half-the-board-on-screen guarantee.
+  const zoomToAt = (nextScale: number, axPx: number, ayPx: number) => {
+    const s = clampScale(nextScale);
+    const prev = view.scale;
+    if (s === prev) return;
+    const k = deps.geometry().pxPerUnit;
+    if (!(k > 0)) {
+      view = { ...view, scale: s };
+      return;
+    }
+    const f = s / prev;
+    const ax = axPx / k;
+    const ay = ayPx / k;
+    view = {
+      scale: s,
+      x: ax * (1 - f) + f * view.x,
+      y: ay * (1 - f) + f * view.y,
+    };
+  };
+
   const checkStranded = () => {
     if (!dev) return;
     if (holds.size === 0) {
@@ -253,6 +288,14 @@ export function createPanZoom(deps: PanZoomDeps): PanZoom {
 
     setPinchScale(s) {
       view = { ...view, scale: clampScale(s) };
+    },
+
+    zoomByWheelAt(dy, axPx, ayPx) {
+      zoomToAt(view.scale - dy * WHEEL_ZOOM_RATE, axPx, ayPx);
+    },
+
+    setPinchScaleAt(s, axPx, ayPx) {
+      zoomToAt(s, axPx, ayPx);
     },
 
     render() {
