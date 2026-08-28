@@ -149,6 +149,14 @@
   font-size: 0.9rem;
   font-variant-numeric: tabular-nums;
 }
+/* Zero-width, so the pill's flex centering sees only the numeral and the
+   degree sign hangs into the right padding. Centering on the full string put
+   the digits visually left of center. Width-independent on purpose: the
+   readout spans one to three digits (0 through 330). */
+.board__btn-degree {
+  display: inline-block;
+  width: 0;
+}
 
 .hex {
   stroke: var(--tile-stroke);

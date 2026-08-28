@@ -1029,7 +1029,7 @@ export function Board() {
           aria-label="Reset rotation"
           title="Reset rotation"
         >
-          {rotation}°
+          {rotation}<span className="board__btn-degree">°</span>
         </button>
         <button
           className="board__btn"
