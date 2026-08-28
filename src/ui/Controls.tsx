@@ -2,6 +2,13 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useGesture } from '@use-gesture/react';
 import { useAppStore } from '../state/store';
+import {
+  DRAWER_PEEK_FALLBACK_PX,
+  MOBILE_QUERY,
+  collapsedOffsetPx,
+  computePeekPx,
+} from './drawerMetrics';
+import { statusFor } from './status';
 import { PRODUCING_RESOURCES } from '../game/constants';
 import type { ChallengeFlavor, PlayerCount, ProducingResource } from '../game/types';
 import { downloadBoardImage } from './exportImage';
@@ -17,13 +24,6 @@ import {
   TelegramIcon,
   WhatsAppIcon,
 } from './icons';
-
-const MOBILE_QUERY = '(max-width: 899px)';
-// Height of the peek (handle) row when the drawer is collapsed. The
-// useLayoutEffect that drives transform reads offsetHeight off the drawer,
-// so the only thing this constant has to match is the *actual* rendered
-// height of `.controls__handle` (padding + drag bar + label ≈ 56px).
-const PEEK_PX = 56;
 
 const PLAYER_COUNTS: PlayerCount[] = [3, 4, 5, 6];
 
@@ -171,12 +171,15 @@ export function Controls() {
   // tap the handle to toggle, or drag it up/down (gesture below) to scrub the
   // open position 1:1 with the finger and snap on release. Desktop ignores
   // all of this — the side panel is always visible via the
-  // @media (min-width: 900px) rule in app.css.
+  // @media (min-width: 900px) rule in app.css. The open flag lives in the
+  // store because Board lifts its container while the drawer is open.
   const [isMobile, setIsMobile] = useState(() =>
     typeof window === 'undefined' ? false : window.matchMedia(MOBILE_QUERY).matches,
   );
-  const [open, setOpen] = useState(false);
+  const open = useAppStore(s => s.drawerOpen);
+  const setDrawerOpen = useAppStore(s => s.setDrawerOpen);
   const drawerRef = useRef<HTMLElement | null>(null);
+  const headRef = useRef<HTMLDivElement | null>(null);
   const handleRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
@@ -187,10 +190,66 @@ export function Controls() {
     return () => mql.removeEventListener('change', onChange);
   }, []);
 
+  // The collapsed height ("peek") has ONE source of truth: the measured
+  // header (drag handle + generate row) plus the live safe-area inset,
+  // combined in drawerMetrics. The result feeds both consumers — the CSS
+  // custom property (board bottom inset, pre-mount anti-flash transform) and
+  // this component's collapse offset — so the JS and the CSS can no longer
+  // disagree the way the old PEEK_PX constant and --drawer-peek did.
+  const peekRef = useRef(DRAWER_PEEK_FALLBACK_PX);
+  const openRef = useRef(open);
+  openRef.current = open;
+  const isMobileRef = useRef(isMobile);
+  isMobileRef.current = isMobile;
+
+  useLayoutEffect(() => {
+    const head = headRef.current;
+    if (!head || typeof window === 'undefined') return;
+    // env(safe-area-inset-bottom) is not readable from JS directly; a
+    // throwaway fixed probe whose height IS the env() value is the standard
+    // way to get the resolved number. Re-measured on resize because the
+    // inset changes between portrait and landscape.
+    const measureInset = () => {
+      const probe = document.createElement('div');
+      probe.style.cssText =
+        'position:fixed;bottom:0;left:0;width:0;height:env(safe-area-inset-bottom, 0px);visibility:hidden;pointer-events:none;';
+      document.body.appendChild(probe);
+      const h = probe.getBoundingClientRect().height;
+      probe.remove();
+      return h;
+    };
+    let inset = measureInset();
+    const apply = () => {
+      peekRef.current = computePeekPx(head.offsetHeight, inset);
+      document.documentElement.style.setProperty('--drawer-peek', `${peekRef.current}px`);
+      // Re-glue a resting collapsed drawer to the new offset (rotation,
+      // viewport resize). A live drag writes its own transform afterwards
+      // and simply wins.
+      const el = drawerRef.current;
+      if (el && isMobileRef.current && !openRef.current) {
+        el.style.transform = `translateY(${collapsedOffsetPx(el.offsetHeight, peekRef.current)}px)`;
+      }
+    };
+    apply();
+    const ro = new ResizeObserver(apply);
+    ro.observe(head);
+    const onResize = () => {
+      inset = measureInset();
+      apply();
+    };
+    window.addEventListener('resize', onResize);
+    window.addEventListener('orientationchange', onResize);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('orientationchange', onResize);
+    };
+  }, []);
+
   const closedOffset = () => {
     const el = drawerRef.current;
     if (!el) return 0;
-    return Math.max(0, el.offsetHeight - PEEK_PX);
+    return collapsedOffsetPx(el.offsetHeight, peekRef.current);
   };
 
   // Keep DOM transform in sync with the open/closed state. We don't use CSS
@@ -233,7 +292,7 @@ export function Controls() {
               : targetY < closedY / 2;
           el.style.transition = 'transform 0.28s ease';
           el.style.transform = nextOpen ? 'translateY(0)' : `translateY(${closedY}px)`;
-          if (nextOpen !== open) setOpen(nextOpen);
+          if (nextOpen !== open) setDrawerOpen(nextOpen);
         } else {
           el.style.transform = `translateY(${targetY}px)`;
         }
@@ -246,51 +305,43 @@ export function Controls() {
     },
   );
 
-  const drawerOpen = !isMobile || open;
+  const panelExpanded = !isMobile || open;
+  const status = statusFor({ generating, hasMap: !!map, attempts, fellBack });
 
   return (
     <aside ref={drawerRef} className={`controls ${isMobile ? (open ? 'controls--open' : 'controls--closed') : ''}`}>
-      <button
-        ref={handleRef}
-        type="button"
-        className="controls__handle"
-        aria-expanded={drawerOpen}
-        aria-controls="controls-body"
-        aria-label={drawerOpen ? 'Collapse options' : 'Expand options'}
-        onClick={() => isMobile && setOpen(o => !o)}
-      >
-        <span className="controls__drag" aria-hidden />
-        <span className="controls__handle-label">{drawerOpen ? 'Hide options' : 'Options'}</span>
-      </button>
-
-      <div id="controls-body" className="controls__body" aria-hidden={!drawerOpen}>
-
-      <div className="controls__row controls__row--primary">
-        <button className="btn btn--primary" onClick={generate} disabled={generating}>
-          {generating ? (
-            <>
-              <span className="spinner" aria-hidden="true" />
-              Generating…
-            </>
-          ) : (
-            'Generate map'
-          )}
+      {/* The head is everything the COLLAPSED drawer shows: drag handle,
+          Generate, and the status line. Its measured height (plus the
+          safe-area inset) IS the peek — see the measurement effect above —
+          so nothing that changes height with state belongs in here. */}
+      <div ref={headRef} className="controls__head">
+        <button
+          ref={handleRef}
+          type="button"
+          className="controls__handle"
+          aria-expanded={panelExpanded}
+          aria-controls="controls-body"
+          aria-label={panelExpanded ? 'Collapse options' : 'Expand options'}
+          onClick={() => isMobile && setDrawerOpen(!open)}
+        >
+          <span className="controls__drag" aria-hidden />
+          <span className="controls__handle-label">{panelExpanded ? 'Hide options' : 'Options'}</span>
         </button>
-        <div className="share">
-          <button
-            type="button"
-            className="btn btn--secondary share__btn"
-            onClick={() => setShareMenuOpen(o => !o)}
-            disabled={!map}
-            aria-haspopup="menu"
-            aria-expanded={shareMenuOpen}
-            aria-label="Share"
-            title="Share"
-          >
-            <ShareIcon />
+        <div className="controls__header">
+          <button className="btn btn--primary" onClick={generate} disabled={generating}>
+            Generate map
           </button>
+          {/* Fixed-height single line in ALL four states (idle renders it
+              empty), so the measured peek never moves. role="status" gives
+              polite live-region announcements for the generating/done swap. */}
+          <div className="controls__status" role="status">
+            {status.kind === 'generating' && <span className="spinner" aria-hidden="true" />}
+            {status.text}
+          </div>
         </div>
       </div>
+
+      <div id="controls-body" className="controls__body" aria-hidden={!panelExpanded}>
 
       {shareMenuOpen && map && createPortal(
         <div
@@ -392,13 +443,12 @@ export function Controls() {
         document.body,
       )}
 
+      {/* The header line only says "Best effort: N attempts"; the full
+          explanation stays here where there is room for it. */}
       {fellBack && map && (
         <div className="notice notice--warn">
           Best-effort map after {attempts} attempts — fairness threshold not met. Try regenerating or relaxing variants.
         </div>
-      )}
-      {map && !fellBack && attempts > 0 && (
-        <div className="notice">Solved in {attempts} attempt{attempts === 1 ? '' : 's'}.</div>
       )}
       {map?.variants.challenge.rolledFlavor && (
         <div className="notice">
@@ -406,19 +456,6 @@ export function Controls() {
           {map.variants.challenge.rolledTarget ? ` (${map.variants.challenge.rolledTarget})` : ''}
         </div>
       )}
-
-      <div className="controls__group">
-        <div className="controls__row">
-          <label className="toggle">
-            <input type="checkbox" checked={showResourceHealth} onChange={toggleShowResourceHealth} />
-            Show resource distribution
-          </label>
-        </div>
-        <p className="help">
-          Per-resource health readout (pip totals, concentration, healthy/warning/unhealthy dot) plus the simulated snake-draft fairness panel.
-        </p>
-        {showResourceHealth && scored && <ResourceHealthPanel />}
-      </div>
 
       <div className="controls__row">
         <span className="controls__label">Players</span>
@@ -435,6 +472,19 @@ export function Controls() {
             </button>
           ))}
         </div>
+      </div>
+
+      <div className="controls__group">
+        <div className="controls__row">
+          <label className="toggle">
+            <input type="checkbox" checked={showResourceHealth} onChange={toggleShowResourceHealth} />
+            Show resource distribution
+          </label>
+        </div>
+        <p className="help">
+          Per-resource health readout (pip totals, concentration, healthy/warning/unhealthy dot) plus the simulated snake-draft fairness panel.
+        </p>
+        {showResourceHealth && scored && <ResourceHealthPanel />}
       </div>
 
       <div className="controls__group">
@@ -625,6 +675,22 @@ export function Controls() {
           Deeper analysis: adjacent-resource pair frequencies, strategic-viability bar, top-20 archetype mix, top port-economy openings, and port hinterland support.
         </p>
         {showAdvancedDiagnostics && scored && <AdvancedDiagnosticsPanel />}
+      </div>
+
+      <div className="controls__group">
+        <div className="controls__row">
+          <button
+            type="button"
+            className="btn btn--secondary share__btn share__btn--labeled"
+            onClick={() => setShareMenuOpen(o => !o)}
+            disabled={!map}
+            aria-haspopup="menu"
+            aria-expanded={shareMenuOpen}
+          >
+            <ShareIcon />
+            Share
+          </button>
+        </div>
       </div>
 
       {/* Drawer footer. Deliberately the quietest thing in the panel and

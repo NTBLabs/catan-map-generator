@@ -1,6 +1,7 @@
 import { useGesture } from '@use-gesture/react';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { useAppStore } from '../state/store';
+import { MOBILE_QUERY, openLiftPx } from './drawerMetrics';
 import { axialToPixel, hexCorner, neighbors } from '../game/coords';
 import { PIP_VALUE, RED_NUMBERS } from '../game/constants';
 import { findHotZoneCluster, findWealthGapAxis } from '../generator/score';
@@ -324,6 +325,7 @@ export function Board() {
   const rotation = useAppStore(s => s.rotation);
   const rotateBy = useAppStore(s => s.rotateBy);
   const resetRotation = useAppStore(s => s.resetRotation);
+  const drawerOpen = useAppStore(s => s.drawerOpen);
 
   // Pan/zoom uses a hybrid path: CSS transform on the outer <svg> *during* an
   // active gesture (fast bitmap composite — fine for transient blur), then
@@ -435,6 +437,55 @@ export function Board() {
   // than one frame late.
   const geomRef = useRef({ viewBoxR, boardCx, boardCy });
   geomRef.current = { viewBoxR, boardCx, boardCy };
+
+  // Open-drawer lift (mobile only). With the drawer open (75dvh) the visible
+  // board strip is the top quarter of the screen, and the centered fit puts
+  // the entire land area below it. Shift the container up just far enough
+  // that the top row of tiles clears the sheet. The shift is paired
+  // top/bottom insets that PRESERVE the container height: same height means
+  // same fitted scale, which keeps the pan/zoom CSS-vs-SVG mode equivalence
+  // intact (an alignment change like xMidYMin would break it, because the
+  // CSS transform scales about the element center). The lift amount comes
+  // from the real board geometry via openLiftPx, since no constant works
+  // across phone/tablet/orientation.
+  useLayoutEffect(() => {
+    const el = containerRef.current;
+    if (!el || typeof window === 'undefined') return;
+    if (!drawerOpen || !window.matchMedia(MOBILE_QUERY).matches) {
+      el.style.top = '';
+      el.style.bottom = '';
+      return;
+    }
+    const apply = () => {
+      // Re-checked per resize: crossing the desktop breakpoint while open
+      // must drop the lift, not keep applying phone math to the side panel.
+      if (!window.matchMedia(MOBILE_QUERY).matches) {
+        el.style.top = '';
+        el.style.bottom = '';
+        return;
+      }
+      const rect = el.getBoundingClientRect();
+      const lift = openLiftPx({
+        containerWidthPx: rect.width,
+        containerHeightPx: rect.height,
+        viewBoxR: geomRef.current.viewBoxR,
+        // Bottom vertex of the top tile row, in user units from the board
+        // center (both layouts center at cy = 0): base board top row sits at
+        // y = -3 (bottom vertex -2), the expansion's at -4.5 (bottom -3.5).
+        topRowBottomUnits: map && map.playerCount > 4 ? -3.5 : -2,
+        viewportHeightPx: window.innerHeight,
+      });
+      el.style.top = `${-lift}px`;
+      el.style.bottom = `calc(var(--drawer-peek) + ${lift}px)`;
+    };
+    apply();
+    window.addEventListener('resize', apply);
+    return () => {
+      window.removeEventListener('resize', apply);
+      el.style.top = '';
+      el.style.bottom = '';
+    };
+  }, [drawerOpen, map]);
 
   // Built once and never rebuilt: it reads geometry and the DOM nodes through
   // getters, so nothing about it goes stale when the map or container changes.
