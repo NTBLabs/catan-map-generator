@@ -61,6 +61,35 @@ function rescore(map: MapState): ScoredMap {
   return scoreMap(map.hexes, map.ports, map.playerCount);
 }
 
+/** A scarcity target that is also the desert-replacement resource is
+ *  contradictory: the variant adds a tile of the resource and the scenario
+ *  then has to starve it. The 2026-08-27 feasibility probe measured that
+ *  combination at a 23% fallback rate (the only cell that misses the 5000
+ *  attempt budget), so the picker forbids it in both selection orders
+ *  rather than the generator papering over it. The most recent selection
+ *  wins and the older side yields:
+ *    - picking the conflicting scarcity target moves the replacement off it
+ *      (to ore, the default, or wheat when ore itself is the target)
+ *    - picking the conflicting replacement (or turning the desert off, or
+ *      switching flavor to scarcity with the conflict latent) releases the
+ *      target back to 'any', which re-rolls per attempt and self-heals.
+ *  playerCount is deliberately ignored: at 5-6 players the generator forces
+ *  the deserts on and no real conflict exists, but reconciling the stored
+ *  variants anyway keeps them valid if the player count drops back to 4. */
+function reconcileScarcityTarget(v: Variants, changed: 'target' | 'board'): Variants {
+  const conflict =
+    v.challenge.flavor === 'scarcity' &&
+    !v.includeDesert &&
+    v.challenge.targetResource !== 'any' &&
+    v.challenge.targetResource === v.desertReplacement;
+  if (!conflict) return v;
+  if (changed === 'target') {
+    const replacement: ProducingResource = v.challenge.targetResource === 'ore' ? 'wheat' : 'ore';
+    return { ...v, desertReplacement: replacement };
+  }
+  return { ...v, challenge: { ...v.challenge, targetResource: 'any' } };
+}
+
 export const useAppStore = create<AppState>((set, get) => ({
   map: null,
   scored: null,
@@ -76,16 +105,23 @@ export const useAppStore = create<AppState>((set, get) => ({
   attempts: 0,
 
   setPlayerCount: (n) => set({ playerCount: n }),
-  setVariants: (patch) => set(s => ({ variants: { ...s.variants, ...patch } })),
+  setVariants: (patch) => set(s => ({
+    variants: reconcileScarcityTarget({ ...s.variants, ...patch }, 'board'),
+  })),
   setChallenge: (flavor, target) => set(s => ({
-    variants: {
-      ...s.variants,
-      challenge: {
-        ...s.variants.challenge,
-        flavor,
-        targetResource: target ?? s.variants.challenge.targetResource,
+    variants: reconcileScarcityTarget(
+      {
+        ...s.variants,
+        challenge: {
+          ...s.variants.challenge,
+          flavor,
+          targetResource: target ?? s.variants.challenge.targetResource,
+        },
       },
-    },
+      // An explicit target pick wins over the stored replacement; a bare
+      // flavor switch that surfaces a latent conflict releases the target.
+      target !== undefined && target !== 'any' ? 'target' : 'board',
+    ),
   })),
   toggleShowBestLocations: () => set(s => ({ showBestLocations: !s.showBestLocations })),
   toggleShowResourceHealth: () => set(s => ({ showResourceHealth: !s.showResourceHealth })),

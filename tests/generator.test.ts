@@ -155,7 +155,10 @@ describe('challenge flavors', () => {
     const { map } = generateMap({ playerCount: 4, variants, maxAttempts: 2000 });
     const health = computeHealth(map.hexes);
     const ore = health.find(h => h.resource === 'ore')!;
-    expect(ore.totalPips).toBeLessThanOrEqual(4);
+    // Gate shape: totalPips <= 2 * tiles - 1 (~55% of fair production share
+    // at any tile count). Ore has 3 tiles here, so the bound is 5.
+    const tiles = map.hexes.filter(h => h.resource === 'ore').length;
+    expect(ore.totalPips).toBeLessThanOrEqual(2 * tiles - 1);
   });
 
   it('drought produces a triple cluster of low-yield hexes', () => {

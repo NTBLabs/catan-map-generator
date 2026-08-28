@@ -60,18 +60,27 @@ export function generateMap(opts: GenerateOptions): GenerateResult {
     // adjacency rule and wealthGap can target a specific axis. Each attempt
     // re-resolves so 'random' flavor can roll different kinds per attempt.
     const challenge = resolveChallenge(opts.variants, rng);
+    // Scarcity and boom-or-bust exempt their TARGET resource (only) from the
+    // two per-resource number toggles, in placement and in the hard check.
+    // Keyed off the resolved kind so 'random' applies it exactly on the
+    // attempts that rolled one of these two kinds. Rationale in
+    // ConstraintOptions.exemptResource.
+    const exemptResource =
+      challenge.kind === 'scarcity' || challenge.kind === 'boomOrBust' ? challenge.target : undefined;
     const candidate = randomizeMap(
       opts.playerCount,
       opts.variants,
       rng,
       opts.spreadHighYieldMode,
       challenge.wealthGapTarget,
+      exemptResource,
     );
     const hard = checkHardConstraints(candidate.hexes, candidate.ports, {
       noSameNumberAdjacent: opts.variants.noSameNumberAdjacent,
       noSameNumberOnResource: opts.variants.noSameNumberOnResource,
       noMultipleRedsOnResource: opts.variants.noMultipleRedsOnResource,
       allowRedAdjacency: challenge.kind === 'hotZone',
+      exemptResource,
     });
     if (!hard.ok) continue;
     if (!hardOnlyFallback) hardOnlyFallback = { hexes: candidate.hexes, ports: candidate.ports };
@@ -143,7 +152,7 @@ export function generateMap(opts: GenerateOptions): GenerateResult {
   throw new Error('Generator failed to produce any candidate satisfying hard constraints');
 }
 
-interface ResolvedChallenge {
+export interface ResolvedChallenge {
   kind: 'none' | ChallengeRolled;
   target?: ProducingResource;
   /** wealthGap-specific: which axis cuts the board and which side is rich.
@@ -152,7 +161,9 @@ interface ResolvedChallenge {
   wealthGapTarget?: WealthGapTarget;
 }
 
-function resolveChallenge(variants: Variants, rng: () => number): ResolvedChallenge {
+// Exported for the gate tests and the .sweep / stress tooling; the app only
+// ever reaches these through generateMap.
+export function resolveChallenge(variants: Variants, rng: () => number): ResolvedChallenge {
   const flavor = variants.challenge.flavor;
   if (flavor === 'none') return { kind: 'none' };
   let kind: ChallengeRolled;
@@ -178,7 +189,7 @@ function resolveChallenge(variants: Variants, rng: () => number): ResolvedChalle
   return { kind, target, wealthGapTarget };
 }
 
-function challengeMatches(
+export function challengeMatches(
   hexes: Hex[],
   ports: Port[],
   playerCount: PlayerCount,
@@ -194,7 +205,18 @@ function challengeMatches(
   const health = computeHealth(hexes);
   if (challenge.kind === 'scarcity') {
     const targetHealth = health.find(h => h.resource === challenge.target);
-    return !!targetHealth && targetHealth.totalPips <= 4;
+    // Scarce = at most 2*tiles - 1 total pips, i.e. under ~1.8 pips per tile
+    // against a board average of ~3.2 on both boards, roughly 55% of the
+    // target's fair production share. The old absolute cap (<= 4) was tuned
+    // on a 3-tile base resource and is unreachable for every tile count
+    // above 3 (a 4-tile resource floors at 6 pips even with duplicate
+    // numbers allowed). 2*tiles - 1 tracks the actual tile count, which
+    // varies with board size and desert replacement, and always lands under
+    // the health panel's 0.6 production-share unhealthy line, so the target
+    // reads as starved in the diagnostics at every size. Shape chosen by
+    // exhaustive multiset enumeration over both number bags (2026-08-27).
+    const tiles = hexes.filter(h => h.resource === challenge.target).length;
+    return !!targetHealth && targetHealth.totalPips <= 2 * tiles - 1;
   }
   if (challenge.kind === 'boomOrBust') {
     const targetHealth = health.find(h => h.resource === challenge.target);

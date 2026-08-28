@@ -11,3 +11,6 @@ dist-ssr
 # Editor / tool config
 .claude/
 *.tsbuildinfo
+
+# Feasibility sweep results (session-local, aggregated by hand)
+.sweep/

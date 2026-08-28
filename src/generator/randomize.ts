@@ -112,6 +112,19 @@ interface PlaceNumbersOpts {
    *  (2/3/11/12) toward the dividing line, falling back to sparse side.
    *  Low-pip never lands on rich side except as last resort. */
   wealthGapTarget?: WealthGapTarget;
+  /** Scarcity / boom-or-bust target resource, exempt from
+   *  noSameNumberOnResource and noMultipleRedsOnResource (and from the soft
+   *  no-duplicate preference). Those toggles exist to prevent exactly the
+   *  board state these two scenarios are trying to create on their target:
+   *  with noSameNumberOnResource on, a k-tile resource carries k DISTINCT
+   *  numbers, and only four low-pip numbers exist, so a 6-tile expansion
+   *  resource floors at 12 pips (64% of fair share, never scarce) and
+   *  single-number concentration ceilings at 5/9 for k=4 (boom's 0.6 gate
+   *  unreachable). Exempting the target alone keeps both scenarios
+   *  satisfiable at every board size while every other resource still obeys
+   *  the toggles. Precedent: hotZone's allowRedAdjacency above. Undefined
+   *  for every other generation path, where behavior is bit-identical. */
+  exemptResource?: string;
 }
 
 const HIGH_PIP_NUMBERS = new Set([4, 5, 6, 8, 9, 10]);
@@ -201,8 +214,9 @@ function placeNumbers(
       if (!opts.allowRedAdjacency && isRed && ns.some(n => n.number !== null && RED_NUMBERS.has(n.number))) return false;
       if (violatesTripleHighYield(s, hexes)) return false;
       if (opts.noSameNumberAdjacent && ns.some(n => n.number === num)) return false;
-      if (opts.noSameNumberOnResource && resourcesAlreadyWithNum.has(s.resource)) return false;
-      if (opts.noMultipleRedsOnResource && isRed && (redCountByResource.get(s.resource) ?? 0) >= redCap) return false;
+      const exempt = s.resource === opts.exemptResource;
+      if (opts.noSameNumberOnResource && !exempt && resourcesAlreadyWithNum.has(s.resource)) return false;
+      if (opts.noMultipleRedsOnResource && isRed && !exempt && (redCountByResource.get(s.resource) ?? 0) >= redCap) return false;
       return true;
     });
     if (candidates.length === 0) return false;
@@ -231,8 +245,14 @@ function placeNumbers(
       if (preferred.length > 0) pool = preferred;
     }
     // Soft preference (always on): don't place this number on a resource that
-    // already has it. Falls back to the broader pool when impossible.
-    const uniqueOnResource = pool.filter(c => !resourcesAlreadyWithNum.has(c.resource));
+    // already has it. Falls back to the broader pool when impossible. The
+    // exempt target stays in the preferred pool even when it already carries
+    // the number: without this, duplicates land on the target only when every
+    // other slot is exhausted, which almost never happens in this phase, and
+    // the exemption above would be unreachable in practice.
+    const uniqueOnResource = pool.filter(
+      c => c.resource === opts.exemptResource || !resourcesAlreadyWithNum.has(c.resource),
+    );
     if (uniqueOnResource.length > 0) pool = uniqueOnResource;
 
     // wealthGap targeting: high-yield numbers (all >= 4 pips) belong on the
@@ -261,9 +281,17 @@ function placeNumbers(
     };
     const validStrict = (s: Hex): boolean => {
       if (!validSoft(s)) return false;
-      if (opts.noSameNumberOnResource && sameNumOnResource.has(s.resource)) return false;
+      if (opts.noSameNumberOnResource && s.resource !== opts.exemptResource && sameNumOnResource.has(s.resource)) {
+        return false;
+      }
       return true;
     };
+    // Same exemption as phase 1's soft preference: the target's slots stay
+    // "preferred" even for a duplicate number, so scarcity can stack e.g.
+    // both 2s and both 12s on its target at the expansion board. Everything
+    // else keeps the no-duplicate preference.
+    const preferredSlot = (s: Hex): boolean =>
+      s.resource === opts.exemptResource || !sameNumOnResource.has(s.resource);
     // wealthGap targeting: walk preferred side first, then fall through.
     // Low-pip numbers (2/3/11/12) prefer dividing line, then sparse side,
     // and only land on rich as a true last resort (which the strict
@@ -271,11 +299,11 @@ function placeNumbers(
     const preferredOrder = opts.wealthGapTarget
       ? wealthGapPreferred(remainingSlots, num, opts.wealthGapTarget)
       : remainingSlots;
-    let target = preferredOrder.find(s => validStrict(s) && !sameNumOnResource.has(s.resource));
+    let target = preferredOrder.find(s => validStrict(s) && preferredSlot(s));
     if (!target) target = preferredOrder.find(validStrict);
     if (!target && opts.wealthGapTarget) {
       // Fall back to ALL remaining slots if preferred side has no valid candidate.
-      target = remainingSlots.find(s => validStrict(s) && !sameNumOnResource.has(s.resource));
+      target = remainingSlots.find(s => validStrict(s) && preferredSlot(s));
       if (!target) target = remainingSlots.find(validStrict);
     }
     if (!target && !opts.noSameNumberOnResource) target = remainingSlots.find(validSoft);
@@ -334,6 +362,7 @@ export function randomizeMap(
   rng: () => number,
   spreadMode?: SpreadHighYieldMode,
   wealthGapTarget?: WealthGapTarget,
+  exemptResource?: string,
 ): RandomizedMap {
   const { resourceCounts, numberCounts } = adjustForVariants(playerCount, variants);
   const layout = buildEmptyLayout(playerCount);
@@ -390,6 +419,7 @@ export function randomizeMap(
      // (random rolls hotZone with 1/5 odds), so placement loosens for both.
     allowRedAdjacency: variants.challenge.flavor === 'hotZone' || variants.challenge.flavor === 'random',
     wealthGapTarget,
+    exemptResource,
   });
 
   const ports = placePorts(layout.perimeterPortSlots, boardFor(playerCount).portTypes, rng, variants.shufflePorts);

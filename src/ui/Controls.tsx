@@ -456,7 +456,16 @@ export function Controls() {
               aria-label="Desert replacement resource"
             >
               {PRODUCING_RESOURCES.map(r => (
-                <option key={r} value={r}>{r}</option>
+                // The scarcity target cannot double as the desert replacement
+                // (adding a tile of a resource contradicts starving it); the
+                // store reconciles the combo if it arises another way.
+                <option
+                  key={r}
+                  value={r}
+                  disabled={variants.challenge.flavor === 'scarcity' && variants.challenge.targetResource === r}
+                >
+                  {r}
+                </option>
               ))}
             </select>
           )}
@@ -569,7 +578,20 @@ export function Controls() {
             >
               <option value="any">Any</option>
               {PRODUCING_RESOURCES.map(r => (
-                <option key={r} value={r}>{r}</option>
+                // Mirror of the desert-replacement restriction above, only
+                // meaningful on the base board where the desert can be off.
+                <option
+                  key={r}
+                  value={r}
+                  disabled={
+                    variants.challenge.flavor === 'scarcity' &&
+                    playerCount <= 4 &&
+                    !variants.includeDesert &&
+                    variants.desertReplacement === r
+                  }
+                >
+                  {r}
+                </option>
               ))}
             </select>
           )}

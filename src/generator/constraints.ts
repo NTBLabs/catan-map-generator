@@ -10,6 +10,16 @@ export interface ConstraintOptions {
    *  the hotZone challenge flavor where the whole point is reds clustering
    *  into a contested zone. Off for every other generation path. */
   allowRedAdjacency?: boolean;
+  /** Scarcity / boom-or-bust target resource, exempt from
+   *  noSameNumberOnResource and noMultipleRedsOnResource. Both toggles
+   *  exist to prevent "one resource depends on one die roll", which is
+   *  precisely the board state those two scenarios must create on their
+   *  target: forced-distinct numbers floor a 6-tile resource at 12 pips
+   *  and cap single-number concentration at 5/9 for 4 tiles, making both
+   *  gates unsatisfiable (see the 2026-08-27 multiset enumeration). Every
+   *  non-target resource still obeys both toggles. Undefined outside those
+   *  two scenario kinds. */
+  exemptResource?: string;
 }
 
 export function checkHardConstraints(
@@ -100,6 +110,7 @@ export function checkHardConstraints(
     const seen = new Map<string, Set<number>>();
     for (const hex of hexes) {
       if (hex.resource === 'desert' || hex.number === null) continue;
+      if (hex.resource === opts.exemptResource) continue;
       let nums = seen.get(hex.resource);
       if (!nums) { nums = new Set(); seen.set(hex.resource, nums); }
       if (nums.has(hex.number)) {
@@ -125,8 +136,11 @@ export function checkHardConstraints(
         totalReds++;
       }
     }
+    // The exempt target may hoard reds; the cap still derives from the full
+    // board red count, so the remaining resources' budget is unchanged.
     const cap = resources.size > 0 ? Math.ceil(totalReds / resources.size) : Infinity;
     for (const [resource, count] of reds) {
+      if (resource === opts.exemptResource) continue;
       if (count > cap) {
         return { ok: false, reason: `${resource} carries ${count} reds, cap is ${cap}` };
       }
