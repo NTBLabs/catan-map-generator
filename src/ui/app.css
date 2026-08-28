@@ -145,11 +145,9 @@
      because shrinking would cut the halves below the 44px touch minimum. */
   width: 48px;
   height: 48px;
-  /* This size now styles only the reset glyph (the readout overrides it).
-     Larger than the arrows' 1.5rem ON PURPOSE: a circular glyph distributes
-     its stroke around a curve and reads lighter than a straight arrow at
-     equal point size, so equal optical weight needs a size premium. */
-  font-size: 1.8rem;
+  /* The glyphs are inline SVG paths (icons.tsx), so no font-size games
+     remain here: their weight is the shared stroke-width, identical on
+     every platform. The readout sets its own text size. */
   font-weight: 800;
   cursor: pointer;
   box-shadow: var(--shadow-button);
@@ -203,13 +201,9 @@
   border: none;
   background: transparent;
   color: var(--catan-brown-dark);
-  /* Shared across breakpoints on purpose: the CSS never differed between
-     them, the perceived difference was platform font metrics (desktop
-     Segoe draws these arrows with far less ink than iOS SF). One size,
-     chosen so the desktop rendering gains weight while mobile's already
-     correct glyph-to-circle ratio is nearly preserved against the larger
-     48px row. */
-  font-size: 1.5rem;
+  /* The arrows are inline SVG paths (icons.tsx): platform font metrics
+     (Segoe's thin arrows vs SF's heavy ones) are out of the picture, so
+     there is nothing font-related left to tune per breakpoint. */
   font-weight: 800;
   cursor: pointer;
   display: flex;

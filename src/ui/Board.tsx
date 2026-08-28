@@ -4,6 +4,7 @@ import { useAppStore } from '../state/store';
 import { MOBILE_QUERY, openLiftPx } from './openLift';
 import { resetView } from './resetView';
 import { beginsOnViewControls } from './gestureOrigin';
+import { ResetViewIcon, RotateLeftIcon, RotateRightIcon } from './icons';
 import { axialToPixel, hexCorner, neighbors } from '../game/coords';
 import { PIP_VALUE, RED_NUMBERS } from '../game/constants';
 import { findHotZoneCluster, findWealthGapAxis } from '../generator/score';
@@ -1112,7 +1113,7 @@ export function Board() {
             aria-label="Rotate left"
             title="Rotate 30° left"
           >
-            ←
+            <RotateLeftIcon />
           </button>
           <button
             className="board__rotate-btn"
@@ -1120,7 +1121,7 @@ export function Board() {
             aria-label="Rotate right"
             title="Rotate 30° right"
           >
-            →
+            <RotateRightIcon />
           </button>
         </div>
         <button
@@ -1137,7 +1138,7 @@ export function Board() {
           aria-label="Reset view"
           title="Reset view (or double-tap board)"
         >
-          ⟲
+          <ResetViewIcon />
         </button>
       </div>
     </div>
