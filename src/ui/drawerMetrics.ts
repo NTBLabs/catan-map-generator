@@ -22,9 +22,9 @@ export const MOBILE_QUERY = '(max-width: 899px)';
  *  value in theme.css. Only visible for the frames before the first header
  *  measurement lands (or if JS never runs, in which case React never mounts
  *  and there is no drawer to align with anyway). Derived from the header's
- *  CSS: handle row (10+5+6+16+8 = 45px) plus the stacked header block
- *  (48px button + 6px gap + 20px status line + 10px padding = 84px). */
-export const DRAWER_PEEK_FALLBACK_PX = 129;
+ *  CSS: handle row (10+5+6+16+8 = 45px) plus header row (48px button + 10px
+ *  padding = 58px). */
+export const DRAWER_PEEK_FALLBACK_PX = 103;
 
 /** Open drawer height as a fraction of the viewport (max-height: 75dvh in
  *  app.css keeps the real drawer at or under this; content overflows, so on

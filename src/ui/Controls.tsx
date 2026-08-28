@@ -338,23 +338,6 @@ export function Controls() {
             {status.kind === 'generating' && <span className="spinner" aria-hidden="true" />}
             {status.text}
           </div>
-          {/* Anchored to the header's right edge, OUT of the flow, so the
-              centered Generate-plus-status stack stays centered. Lives in
-              the header on both breakpoints: on desktop this is the top of
-              the side panel (its pre-f0c5783 home), on mobile it makes the
-              current map shareable without opening the drawer. */}
-          <button
-            type="button"
-            className="btn btn--secondary share__btn controls__share"
-            onClick={() => setShareMenuOpen(o => !o)}
-            disabled={!map}
-            aria-haspopup="menu"
-            aria-expanded={shareMenuOpen}
-            aria-label="Share"
-            title="Share"
-          >
-            <ShareIcon />
-          </button>
         </div>
       </div>
 
@@ -692,6 +675,22 @@ export function Controls() {
           Deeper analysis: adjacent-resource pair frequencies, strategic-viability bar, top-20 archetype mix, top port-economy openings, and port hinterland support.
         </p>
         {showAdvancedDiagnostics && scored && <AdvancedDiagnosticsPanel />}
+      </div>
+
+      <div className="controls__group">
+        <div className="controls__row">
+          <button
+            type="button"
+            className="btn btn--secondary share__btn share__btn--labeled"
+            onClick={() => setShareMenuOpen(o => !o)}
+            disabled={!map}
+            aria-haspopup="menu"
+            aria-expanded={shareMenuOpen}
+          >
+            <ShareIcon />
+            Share
+          </button>
+        </div>
       </div>
 
       {/* Drawer footer. Deliberately the quietest thing in the panel and
