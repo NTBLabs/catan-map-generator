@@ -1065,14 +1065,28 @@ export function Board() {
         </g>
       </svg>
       <div className="board__view-controls">
-        <button
-          className="board__btn"
-          onClick={() => rotateBy(-30)}
-          aria-label="Rotate counter-clockwise"
-          title="Rotate 30° counter-clockwise"
-        >
-          ↺
-        </button>
+        {/* The two nudges are one paired control: a shared pill, one
+            border, hairline divider. Each half keeps its own button
+            semantics and label. The readout and the pan/zoom reset stay
+            separate siblings to the right. */}
+        <div className="board__rotate" role="group" aria-label="Rotate board">
+          <button
+            className="board__rotate-btn"
+            onClick={() => rotateBy(-30)}
+            aria-label="Rotate counter-clockwise"
+            title="Rotate 30° counter-clockwise"
+          >
+            ↺
+          </button>
+          <button
+            className="board__rotate-btn"
+            onClick={() => rotateBy(30)}
+            aria-label="Rotate clockwise"
+            title="Rotate 30° clockwise"
+          >
+            ↻
+          </button>
+        </div>
         <button
           className="board__btn board__btn--label"
           onClick={resetRotation}
@@ -1080,14 +1094,6 @@ export function Board() {
           title="Reset rotation"
         >
           {rotation}<span className="board__btn-degree">°</span>
-        </button>
-        <button
-          className="board__btn"
-          onClick={() => rotateBy(30)}
-          aria-label="Rotate clockwise"
-          title="Rotate 30° clockwise"
-        >
-          ↻
         </button>
         <button
           className="board__btn"

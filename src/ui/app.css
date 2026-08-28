@@ -171,6 +171,49 @@
   width: 0;
 }
 
+/* The rotate nudges are one paired control: a shared pill with a single
+   border and a hairline divider, so the pair reads as a unit next to the
+   readout and the pan/zoom reset. The halves keep the standard 44px button
+   box; the pill's own 2px border therefore renders 48px outer beside the
+   44px circles, a known mismatch the sizing commit resolves. */
+.board__rotate {
+  display: flex;
+  background: var(--catan-cream);
+  border: 2px solid var(--catan-gold);
+  border-radius: 999px;
+  box-shadow: var(--shadow-button);
+  overflow: hidden;
+}
+.board__rotate-btn {
+  width: 44px;
+  height: 44px;
+  border: none;
+  background: transparent;
+  color: var(--catan-brown-dark);
+  font-size: 1.3rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  font-family: inherit;
+}
+.board__rotate-btn + .board__rotate-btn {
+  border-left: 1px solid rgba(125, 75, 30, 0.35);
+}
+.board__rotate-btn:active {
+  transform: translateY(1px);
+}
+/* The pill's overflow:hidden (needed for the rounded ends) would clip the
+   browser's default focus ring, so each half draws its own INSET ring: a
+   shape cue, not a color-only state, and independently visible per half. */
+.board__rotate-btn:focus-visible {
+  outline: 2px solid var(--catan-brown-dark);
+  outline-offset: -3px;
+  border-radius: 999px;
+}
+
 .hex {
   stroke: var(--tile-stroke);
   stroke-width: 0.04;
