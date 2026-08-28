@@ -132,6 +132,15 @@
   gap: 6px;
   align-items: center;
   z-index: 2;
+  /* iOS long-press on the readout numerals was starting text selection,
+     leaving the digits highlighted and the gesture stuck. Scoped to this
+     row (any text in the cluster is equally vulnerable) so copyable text
+     elsewhere stays copyable. -webkit-touch-callout is deliberately
+     absent: the callout is the link/image save-share bubble and this row
+     contains neither; the text-selection loupe is governed by
+     user-select alone. */
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .board__btn {
