@@ -139,9 +139,17 @@
   color: var(--catan-brown-dark);
   border: 2px solid var(--catan-gold);
   border-radius: 50%;
-  width: 44px;
-  height: 44px;
-  font-size: 1.3rem;
+  /* 48px OUTER (border-box, 44px inside the ring), matching the rotate
+     pill, whose 44px halves sit inside the same 2px border. The row is one
+     uniform 48px height; raised the circles rather than shrinking the pill
+     because shrinking would cut the halves below the 44px touch minimum. */
+  width: 48px;
+  height: 48px;
+  /* This size now styles only the reset glyph (the readout overrides it).
+     Larger than the arrows' 1.5rem ON PURPOSE: a circular glyph distributes
+     its stroke around a curve and reads lighter than a straight arrow at
+     equal point size, so equal optical weight needs a size premium. */
+  font-size: 1.8rem;
   font-weight: 800;
   cursor: pointer;
   box-shadow: var(--shadow-button);
@@ -156,10 +164,15 @@
 }
 .board__btn--label {
   width: auto;
-  min-width: 44px;
-  padding: 0 10px;
-  border-radius: 22px;
-  font-size: 0.9rem;
+  /* Grows with content; uniform means uniform HEIGHT (48, from
+     .board__btn), not identical width. The wider minimum and padding give
+     the numeral a comfortable center with room for the degree sign to
+     hang (the sign's ink is ~6.5px at this size, well inside the 14px
+     padding at every value 0 through 330, one to three digits). */
+  min-width: 48px;
+  padding: 0 14px;
+  border-radius: 24px;
+  font-size: 1rem;
   font-variant-numeric: tabular-nums;
 }
 /* Zero-width, so the pill's flex centering sees only the numeral and the
@@ -173,9 +186,9 @@
 
 /* The rotate nudges are one paired control: a shared pill with a single
    border and a hairline divider, so the pair reads as a unit next to the
-   readout and the pan/zoom reset. The halves keep the standard 44px button
-   box; the pill's own 2px border therefore renders 48px outer beside the
-   44px circles, a known mismatch the sizing commit resolves. */
+   readout and the reset. The 44px halves inside the 2px border render the
+   pill 48px outer, the row's uniform height (the circles are sized to
+   match it). */
 .board__rotate {
   display: flex;
   background: var(--catan-cream);
@@ -190,7 +203,13 @@
   border: none;
   background: transparent;
   color: var(--catan-brown-dark);
-  font-size: 1.3rem;
+  /* Shared across breakpoints on purpose: the CSS never differed between
+     them, the perceived difference was platform font metrics (desktop
+     Segoe draws these arrows with far less ink than iOS SF). One size,
+     chosen so the desktop rendering gains weight while mobile's already
+     correct glyph-to-circle ratio is nearly preserved against the larger
+     48px row. */
+  font-size: 1.5rem;
   font-weight: 800;
   cursor: pointer;
   display: flex;
