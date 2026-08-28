@@ -89,6 +89,13 @@
 .app__board {
   position: absolute;
   inset: 0;
+  /* Stop at the collapsed drawer's top edge instead of running under it. The
+     initial framing is just preserveAspectRatio centering the viewBox in this
+     container, so the container must BE the visible area or the board loads
+     sitting low (dead band at the top on phones, bottom edge under the drawer
+     in landscape). Desktop resets this: there the controls are a side panel
+     and the bottom of the viewport is really available. */
+  bottom: var(--drawer-peek);
   overflow: hidden;
   touch-action: none;
   /* Scope paint/layout work to this subtree — tells the browser it doesn't
@@ -112,8 +119,10 @@
 
 .board__view-controls {
   position: absolute;
-  /* Sits above the collapsed peek bar (~56px) plus the iOS home indicator. */
-  bottom: calc(56px + env(safe-area-inset-bottom) + 12px);
+  /* The container's bottom edge is already the collapsed drawer's top edge
+     (see .app__board), so a plain offset lands the buttons above the peek
+     bar on every viewport. */
+  bottom: 12px;
   right: 12px;
   display: flex;
   gap: 6px;
@@ -243,7 +252,7 @@
   max-height: 75dvh;
   /* Initial visual state before the first useLayoutEffect runs is closed —
      prevents a flash of fully-open drawer on cold load. */
-  transform: translateY(calc(75dvh - 56px - env(safe-area-inset-bottom)));
+  transform: translateY(calc(75dvh - var(--drawer-peek)));
 }
 
 .controls__handle {
@@ -756,6 +765,7 @@
      everything else and the header overlay only spans the board area. */
   .app__board {
     right: 376px;
+    bottom: 0;
   }
   .app__header {
     right: 376px;
@@ -777,8 +787,5 @@
   }
   .controls__body {
     padding: 10px 16px 16px;
-  }
-  .board__view-controls {
-    bottom: 12px;
   }
 }

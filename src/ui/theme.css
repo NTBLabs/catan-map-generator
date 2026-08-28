@@ -25,6 +25,11 @@
   /* Spacing & radii */
   --radius-card: 14px;
   --radius-button: 12px;
+  /* Height of the collapsed options drawer: the peek (handle) row plus the
+     iOS home-indicator inset it sits above. Shared by the drawer's pre-mount
+     transform and the board container's bottom inset (app.css) so the two
+     cannot drift. Must track PEEK_PX in Controls.tsx. */
+  --drawer-peek: calc(56px + env(safe-area-inset-bottom));
   --shadow-card: 0 6px 16px rgba(0, 0, 0, 0.25);
   --shadow-button: 0 2px 6px rgba(0, 0, 0, 0.25);
 }
