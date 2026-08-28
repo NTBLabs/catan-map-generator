@@ -41,10 +41,18 @@
      bottom margin = 106. The first computation of this (124) took the
      label line at 16 and the margins as collapsed to 8; both were wrong
      and it clipped the attempts line on device.
+     The chrome grace is CHOSEN BY EYE, not derived: while iPhone Safari's
+     bottom bar is visible it overlaps the drawer from below, and in that
+     state env(safe-area-inset-bottom) reads ~0 (the bar sits below the web
+     viewport), so no CSS value reports the bar's height to derive from.
+     It is a separate additive term on BOTH constants (keeping the
+     bare-to-notice growth at exactly 24px), so tuning it never requires
+     re-deriving the content math above.
      Controls.tsx reads the RESOLVED current value through a probe
      element, so the JS cannot disagree with the CSS. */
-  --drawer-peek-notice: calc(130px + env(safe-area-inset-bottom));
-  --drawer-peek-bare: calc(106px + env(safe-area-inset-bottom));
+  --drawer-chrome-grace: 20px;
+  --drawer-peek-notice: calc(130px + var(--drawer-chrome-grace) + env(safe-area-inset-bottom));
+  --drawer-peek-bare: calc(106px + var(--drawer-chrome-grace) + env(safe-area-inset-bottom));
   --drawer-peek: var(--drawer-peek-bare);
   --shadow-card: 0 6px 16px rgba(0, 0, 0, 0.25);
   --shadow-button: 0 2px 6px rgba(0, 0, 0, 0.25);
