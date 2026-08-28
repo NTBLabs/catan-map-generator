@@ -333,6 +333,18 @@
 .controls__row--primary {
   margin-top: 0;
 }
+/* Bare state (no notice yet): reserve the attempts line's vertical slot as
+   spacing below the Generate row, so Players sits exactly where it will
+   once a notice exists and the collapsed fold lands in empty space rather
+   than on a control. Deliberately a margin, not a placeholder element: an
+   empty reserved line in the peek reads as a hole; a margin reads as air.
+   28 makes the row-to-Players distance match the notice state's 36px
+   (12px uncollapsed row/notice margins + 16px line + 8px notice-to-Players
+   there; 28 + 8 here). Applies on BOTH breakpoints so desktop doesn't
+   reflow 20px downward when the first notice lands either. */
+.controls:not(.controls--has-notice) .controls__row--primary {
+  margin-bottom: 28px;
+}
 
 .controls__row {
   display: flex;
