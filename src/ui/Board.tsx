@@ -3,6 +3,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { useAppStore } from '../state/store';
 import { MOBILE_QUERY, openLiftPx } from './openLift';
 import { resetView } from './resetView';
+import { beginsOnViewControls } from './gestureOrigin';
 import { axialToPixel, hexCorner, neighbors } from '../game/coords';
 import { PIP_VALUE, RED_NUMBERS } from '../game/constants';
 import { findHotZoneCluster, findWealthGapAxis } from '../generator/score';
@@ -366,6 +367,9 @@ export function Board() {
   const wheelIdleRef = useRef<number | null>(null);
   const dragRafRef = useRef<number | null>(null);
   const pinchRafRef = useRef<number | null>(null);
+  // True while the current drag gesture started on the view-control
+  // cluster; the whole gesture is then ignored by the pan handler.
+  const dragFromControlsRef = useRef(false);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -545,7 +549,18 @@ export function Board() {
 
   useGesture(
     {
-      onDrag: ({ delta: [dxPx, dyPx], first, last }) => {
+      onDrag: ({ delta: [dxPx, dyPx], first, last, event }) => {
+        if (first) {
+          // A drag that BEGINS on the view-control cluster must never grab
+          // the board (pressing a rotate nudge was panning the map under
+          // the finger, and probing showed every control leaked the same
+          // way). The gesture targets the whole container, so the overlay
+          // bubbles into this handler; filter by ORIGIN and skip the
+          // entire gesture, so acquire/release stay paired and no hold is
+          // ever taken.
+          dragFromControlsRef.current = beginsOnViewControls(event.target);
+        }
+        if (dragFromControlsRef.current) return;
         if (first) {
           // Acquire BEFORE releasing the wheel below. Reversed, releasing the
           // wheel's last hold would swap to SVG mode and the acquire would
