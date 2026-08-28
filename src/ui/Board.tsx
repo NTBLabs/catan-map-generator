@@ -1088,24 +1088,17 @@ export function Board() {
             semantics and label. The readout and the pan/zoom reset stay
             separate siblings to the right. */}
         <div className="board__rotate" role="group" aria-label="Rotate board">
-          {/* The arrows describe the board's NEAR-EDGE motion: this cluster
-              sits at the BOTTOM of the board, so the motion the eye tracks
-              from here is the bottom edge's. rotateBy(-30) is
-              counter-clockwise (verified in rendered pixels: the top edge
-              moves left), which sweeps the bottom edge RIGHT, and on device
-              that reads as the board turning right, so -30 carries the
-              right arrow. A previous mapping anchored on the TOP edge and
-              read inverted on the phone; the rotation math itself is
-              correct and unchanged, so do not "fix" this back by deriving
-              from the top edge again. */}
-          <button
-            className="board__rotate-btn"
-            onClick={() => rotateBy(-30)}
-            aria-label="Rotate right"
-            title="Rotate 30° right"
-          >
-            →
-          </button>
+          {/* The arrow is the direction the user PUSHES the board's near
+              edge, and the rotation follows the push: this cluster sits
+              BELOW the board, so tapping ← shoves the bottom edge left
+              (like turning a can by its near side) and the board follows.
+              Measured in rendered pixels (CDP, tracking the bottom-most
+              number token): rotateBy(30) moves the near edge LEFT, so the
+              left-position ← button calls rotateBy(30); rotateBy(-30)
+              moves it right. The arrows point OUTWARD as a matched pair.
+              Do not re-derive this mapping from the TOP edge: that anchor
+              produced an inverted assignment twice; the near edge is the
+              reference, and the rotation math itself is untouched. */}
           <button
             className="board__rotate-btn"
             onClick={() => rotateBy(30)}
@@ -1113,6 +1106,14 @@ export function Board() {
             title="Rotate 30° left"
           >
             ←
+          </button>
+          <button
+            className="board__rotate-btn"
+            onClick={() => rotateBy(-30)}
+            aria-label="Rotate right"
+            title="Rotate 30° right"
+          >
+            →
           </button>
         </div>
         <button
