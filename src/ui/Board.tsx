@@ -4,6 +4,7 @@ import { useAppStore } from '../state/store';
 import { MOBILE_QUERY, openLiftPx } from './openLift';
 import { resetView } from './resetView';
 import { beginsOnViewControls } from './gestureOrigin';
+import { biasAnchorToLand } from './anchorBias';
 import { ResetViewIcon, RotateLeftIcon, RotateRightIcon } from './icons';
 import { axialToPixel, hexCorner, neighbors } from '../game/coords';
 import { PIP_VALUE, RED_NUMBERS } from '../game/constants';
@@ -392,8 +393,8 @@ export function Board() {
     return () => ro.disconnect();
   }, []);
 
-  const { viewBox, boardCx, boardCy, viewBoxR, frameR, portEndR } = useMemo(() => {
-    if (!map) return { viewBox: '-6 -6 12 12', boardCx: 0, boardCy: 0, viewBoxR: 6, frameR: 6, portEndR: 5 };
+  const { viewBox, boardCx, boardCy, viewBoxR, frameR, portEndR, landR } = useMemo(() => {
+    if (!map) return { viewBox: '-6 -6 12 12', boardCx: 0, boardCy: 0, viewBoxR: 6, frameR: 6, portEndR: 5, landR: 4.4 };
     // Square viewBox centered on the board, sized to contain the water frame
     // (regular hex circumradius R) plus any port docks that reach beyond it
     // on coastal sides. (cx, cy) is also returned so the rotation transform
@@ -425,6 +426,7 @@ export function Board() {
       viewBoxR: R,
       frameR: hexFrameR,
       portEndR: portEnd,
+      landR,
     };
   }, [map]);
 
@@ -448,8 +450,8 @@ export function Board() {
   // render (not in an effect) so a regenerated map, which can change viewBoxR
   // via the wealthGap label reach, is picked up on the very next frame rather
   // than one frame late.
-  const geomRef = useRef({ viewBoxR, boardCx, boardCy });
-  geomRef.current = { viewBoxR, boardCx, boardCy };
+  const geomRef = useRef({ viewBoxR, boardCx, boardCy, landR });
+  geomRef.current = { viewBoxR, boardCx, boardCy, landR };
 
   // Open-drawer lift (mobile only): shift the container up so the top row
   // of tiles clears the open sheet, as paired top/bottom insets that
@@ -623,13 +625,19 @@ export function Board() {
         }
         // Anchor on the live midpoint of the two touches: each frame is its
         // own fixed-point step, so a midpoint that moves between frames is
-        // tracked automatically.
+        // tracked automatically. The anchor is biased onto the land's
+        // bounding circle first (anchorBias.ts): fingers are not cursors,
+        // and a midpoint in open water made the board slide toward a point
+        // the user never aimed at. Wheel zoom is deliberately NOT biased:
+        // a cursor is a precise, deliberate pointer and desktop wheel
+        // behavior was reported correct.
         const r = zoomRectRef.current;
-        panZoom.setPinchScaleAt(
-          s,
-          r ? ox - r.left - r.width / 2 : 0,
-          r ? oy - r.top - r.height / 2 : 0,
-        );
+        const rawAx = r ? ox - r.left - r.width / 2 : 0;
+        const rawAy = r ? oy - r.top - r.height / 2 : 0;
+        const { width: bw, height: bh } = boundsRef.current;
+        const k = !bw || !bh ? 1 : Math.min(bw, bh) / (2 * geomRef.current.viewBoxR);
+        const { ax, ay } = biasAnchorToLand(rawAx, rawAy, panZoom.getView(), k, geomRef.current.landR);
+        panZoom.setPinchScaleAt(s, ax, ay);
         if (pinchRafRef.current == null) {
           pinchRafRef.current = window.requestAnimationFrame(() => {
             pinchRafRef.current = null;
