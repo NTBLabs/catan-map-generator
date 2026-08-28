@@ -11,7 +11,7 @@ import { PIP_VALUE, RED_NUMBERS } from '../game/constants';
 import { findHotZoneCluster, findWealthGapAxis } from '../generator/score';
 import type { Hex, Port, PortType } from '../game/types';
 import { PortGlyph, TileArt } from './TileIcon';
-import { createPanZoom, type PanZoom } from './panZoom';
+import { createPanZoom, MAX_SCALE, MIN_SCALE, type PanZoom } from './panZoom';
 
 function hexPath(hex: Hex): string {
   const pts: string[] = [];
@@ -701,6 +701,20 @@ export function Board() {
     {
       target: containerRef,
       eventOptions: { passive: false },
+      // The pinch's cumulative offset is seeded from the controller's
+      // CURRENT scale at every gesture start. Without this, use-gesture
+      // remembers where the last pinch ended while reset()/clamping move
+      // our scale underneath it, and the next pinch's first frame snaps
+      // the board to the stale remembered value (the reset-then-pinch
+      // jump, reproduced at every timing). scaleBounds keeps the offset
+      // from drifting past our clamp, which previously left reversal
+      // dead zones of ~10-13 touch moves at the limits. Gesture-library
+      // config is not unit-testable in node; the CDP reproducer scripts
+      // are the regression check.
+      pinch: {
+        from: () => [panZoom.getView().scale, 0],
+        scaleBounds: { min: MIN_SCALE, max: MAX_SCALE },
+      },
     },
   );
 
