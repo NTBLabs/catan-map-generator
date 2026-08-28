@@ -793,9 +793,8 @@
 
 .notice {
   font-size: 0.8rem;
-  /* Pinned (was font-dependent, ~15.5-17px across platforms) so the
-     collapsed drawer's fixed 124px peek cuts exactly below the first notice
-     line on every device. */
+  /* Pinned (was font-dependent, ~15.5-17px across platforms) so the fixed
+     collapsed peeks in theme.css cut at the same spot on every device. */
   line-height: 16px;
   color: var(--catan-brown-mid);
   margin-top: 4px;
@@ -829,5 +828,13 @@
   }
   .controls__body {
     padding: 10px 16px 16px;
+  }
+  /* The 28px bare-state slot reservation reads as too much air in the side
+     panel, which has no fold to protect. Halved here BY CHOICE, giving up
+     the zero-reflow property on desktop: when the first notice arrives,
+     content below shifts down 14px (36px notice-state gap minus 14 + 8
+     here). Mobile keeps the full 28px and its zero-shift exchange. */
+  .controls:not(.controls--has-notice) .controls__row--primary {
+    margin-bottom: 14px;
   }
 }

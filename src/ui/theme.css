@@ -45,13 +45,20 @@
      bottom bar is visible it overlaps the drawer from below, and in that
      state env(safe-area-inset-bottom) reads ~0 (the bar sits below the web
      viewport), so no CSS value reports the bar's height to derive from.
-     It is a separate additive term on BOTH constants (keeping the
-     bare-to-notice growth at exactly 24px), so tuning it never requires
-     re-deriving the content math above.
+     The two peeks answer to DIFFERENT governing constraints, which is why
+     only one carries the grace term. The bare peek is bounded by chrome:
+     its fold sits in open air (Players starts at 134), so it takes the
+     full grace and ends at 126. The notice peek is bounded by CONTENT:
+     its fold must stay below the attempts line's bottom (126) and above
+     the Players container's top (134), so it is pinned to 130 (4px air
+     each side) with no grace term; grace-padding it to 150 put the top of
+     Players inside the visible band on device. Tuning the grace therefore
+     moves only the bare peek, and the notice fold keeps its content
+     ceiling.
      Controls.tsx reads the RESOLVED current value through a probe
      element, so the JS cannot disagree with the CSS. */
   --drawer-chrome-grace: 20px;
-  --drawer-peek-notice: calc(130px + var(--drawer-chrome-grace) + env(safe-area-inset-bottom));
+  --drawer-peek-notice: calc(130px + env(safe-area-inset-bottom));
   --drawer-peek-bare: calc(106px + var(--drawer-chrome-grace) + env(safe-area-inset-bottom));
   --drawer-peek: var(--drawer-peek-bare);
   --shadow-card: 0 6px 16px rgba(0, 0, 0, 0.25);
