@@ -299,6 +299,16 @@
   pointer-events: auto;
 }
 
+/* The drawer publishes its notice state as a class; :has() lifts the swap
+   onto .app so BOTH consumers of --drawer-peek (the board's bottom inset
+   and the drawer's own pre-mount transform) resolve the same value. A
+   drawer-scoped override would fork the two. If :has() is ever
+   unsupported, the peek stays at the bare value and the notice line sits
+   just below the fold: degraded, not broken. */
+.app:has(.controls--has-notice) {
+  --drawer-peek: var(--drawer-peek-notice);
+}
+
 .controls__drag {
   width: 44px;
   height: 5px;
@@ -765,13 +775,6 @@
   line-height: 16px;
   color: var(--catan-brown-mid);
   margin-top: 4px;
-}
-/* Rendered when NO notice exists (pre-first-generation, or a URL-loaded
-   balanced map) to hold the attempts line's slot open, so the collapsed
-   drawer shows a quiet blank line there instead of the next control, and
-   nothing shifts when the first generation's text lands. */
-.notice--spacer {
-  height: 16px;
 }
 .notice--warn { color: var(--catan-red-bright); font-weight: 700; }
 

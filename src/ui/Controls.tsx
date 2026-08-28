@@ -182,14 +182,26 @@ export function Controls() {
     return () => mql.removeEventListener('change', onChange);
   }, []);
 
+  // Whether any notice line is rendered. Drives the collapsed height: the
+  // drawer swaps between the two fixed peeks in theme.css exactly once,
+  // when the first notice appears (never between generations, never by
+  // notice content). Published as a class on the drawer; app.css lifts it
+  // to .app via :has() so the board inset follows too.
+  const hasNotice =
+    (fellBack && !!map) ||
+    (!!map && !fellBack && attempts > 0) ||
+    !!map?.variants.challenge.rolledFlavor;
+
   // The collapsed height ("peek") is defined ONCE, in theme.css, as
-  // --drawer-peek (a fixed 124px plus the safe-area inset). env() cannot be
-  // read from JS directly, so the resolved pixel value is measured off a
-  // throwaway probe element styled with the variable. Re-measured on resize
-  // and orientation change because the inset differs between portrait and
-  // landscape; a resting collapsed drawer is re-glued to the new offset
-  // (its own offsetHeight changes with orientation too).
-  const peekRef = useRef(124);
+  // --drawer-peek (a fixed pixel value plus the safe-area inset). env()
+  // cannot be read from JS directly, so the resolved pixel value is
+  // measured off a throwaway probe element styled with the variable. The
+  // probe mounts INSIDE the drawer, because the notice-state swap lives on
+  // .app and a body-mounted probe would only ever see the :root default.
+  // Re-measured on resize and orientation change (the inset differs by
+  // orientation) and when the notice state flips; a resting collapsed
+  // drawer is re-glued to the new offset each time.
+  const peekRef = useRef(106);
   const openRef = useRef(open);
   openRef.current = open;
   const isMobileRef = useRef(isMobile);
@@ -198,15 +210,16 @@ export function Controls() {
   useLayoutEffect(() => {
     if (typeof window === 'undefined') return;
     const measure = () => {
+      const el = drawerRef.current;
+      if (!el) return;
       const probe = document.createElement('div');
       probe.style.cssText =
-        'position:fixed;bottom:0;left:0;width:0;height:var(--drawer-peek);visibility:hidden;pointer-events:none;';
-      document.body.appendChild(probe);
+        'position:absolute;bottom:0;left:0;width:0;height:var(--drawer-peek);visibility:hidden;pointer-events:none;';
+      el.appendChild(probe);
       const h = probe.getBoundingClientRect().height;
       probe.remove();
       if (h > 0) peekRef.current = h;
-      const el = drawerRef.current;
-      if (el && isMobileRef.current && !openRef.current) {
+      if (isMobileRef.current && !openRef.current) {
         el.style.transform = `translateY(${Math.max(0, el.offsetHeight - peekRef.current)}px)`;
       }
     };
@@ -217,7 +230,7 @@ export function Controls() {
       window.removeEventListener('resize', measure);
       window.removeEventListener('orientationchange', measure);
     };
-  }, []);
+  }, [hasNotice]);
 
   const closedOffset = () => {
     const el = drawerRef.current;
@@ -281,7 +294,7 @@ export function Controls() {
   const drawerOpen = !isMobile || open;
 
   return (
-    <aside ref={drawerRef} className={`controls ${isMobile ? (open ? 'controls--open' : 'controls--closed') : ''}`}>
+    <aside ref={drawerRef} className={`controls ${isMobile ? (open ? 'controls--open' : 'controls--closed') : ''}${hasNotice ? ' controls--has-notice' : ''}`}>
       <button
         ref={handleRef}
         type="button"
@@ -437,13 +450,6 @@ export function Controls() {
           Challenge rolled: <strong>{FLAVOR_LABELS[map.variants.challenge.rolledFlavor]}</strong>
           {map.variants.challenge.rolledTarget ? ` (${map.variants.challenge.rolledTarget})` : ''}
         </div>
-      )}
-      {/* The collapsed 124px peek reserves one notice line. When nothing
-          above rendered (before the first generation, or a URL-loaded
-          balanced map), this holds the slot so the next control doesn't
-          surface in the peek and nothing shifts when text arrives. */}
-      {!(fellBack && map) && !(map && !fellBack && attempts > 0) && !map?.variants.challenge.rolledFlavor && (
-        <div className="notice notice--spacer" aria-hidden="true" />
       )}
 
       <div className="controls__row">

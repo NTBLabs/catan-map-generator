@@ -25,17 +25,27 @@
   /* Spacing & radii */
   --radius-card: 14px;
   --radius-button: 12px;
-  /* Height of the collapsed options drawer: drag handle (45px) + the
-     Generate/Share row (48px + 8px collapsed margin + 4px body padding) +
-     one reserved 16px notice line (the attempts line) + 3px breathing, plus
-     the home-indicator inset. FIXED on purpose: a content-measured peek
-     would resize the drawer between generations (fallback notices run 2-3
-     lines) and move the board under the user. Taller notice stacks fall
-     below the fold and are revealed on open. This is the ONLY definition
-     site: Controls.tsx reads the RESOLVED value through a probe element, so
-     the JS cannot disagree with it (the old PEEK_PX constant ignored the
-     safe-area inset while the CSS included it). */
-  --drawer-peek: calc(124px + env(safe-area-inset-bottom));
+  /* Collapsed drawer heights, one per notice state, both FIXED: a
+     content-measured peek would resize the drawer between generations
+     (fallback notices run 2-3 lines) and move the board under the user.
+     The drawer swaps between these exactly once, when the first notice
+     line appears (see .app:has(.controls--has-notice) in app.css); it
+     never resizes by notice content.
+     Derivation, top of drawer downward: handle 46 (10 pad + 5 drag bar +
+     6 gap + ~17 label line, the 0.8rem label's platform line-height) +
+     body top padding 4 + Generate/Share row 48. The notice value adds the
+     row/notice margins at 12 (Safari does not reliably collapse the flex
+     row's 8px bottom margin with the notice's 4px top margin) + one
+     pinned 16px notice line + 4px breathing = 130. The bare value (share
+     link load, nothing generated yet) ends at the row plus its 8px
+     bottom margin = 106. The first computation of this (124) took the
+     label line at 16 and the margins as collapsed to 8; both were wrong
+     and it clipped the attempts line on device.
+     Controls.tsx reads the RESOLVED current value through a probe
+     element, so the JS cannot disagree with the CSS. */
+  --drawer-peek-notice: calc(130px + env(safe-area-inset-bottom));
+  --drawer-peek-bare: calc(106px + env(safe-area-inset-bottom));
+  --drawer-peek: var(--drawer-peek-bare);
   --shadow-card: 0 6px 16px rgba(0, 0, 0, 0.25);
   --shadow-button: 0 2px 6px rgba(0, 0, 0, 0.25);
 }
