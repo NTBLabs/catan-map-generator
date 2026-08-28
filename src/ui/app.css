@@ -287,12 +287,16 @@
   padding: 4px 16px calc(16px + env(safe-area-inset-bottom));
   -webkit-overflow-scrolling: touch;
 }
-/* While the drawer is collapsed, the body is mostly below the screen but a
-   sliver still bleeds in above the safe-area inset. Disable pointer events
-   on it so accidental swipes on that sliver don't scroll hidden content —
-   the user must use the handle to drag/tap the drawer open. */
+/* While the drawer is collapsed, most of the body is below the screen.
+   Disable pointer events on it so accidental swipes don't scroll hidden
+   content, then re-enable JUST the Generate/Share row, which the 124px peek
+   deliberately keeps visible: a button you can see must be tappable. The
+   notices below it stay inert (they are not interactive anyway). */
 .controls.controls--closed .controls__body {
   pointer-events: none;
+}
+.controls.controls--closed .controls__row--primary {
+  pointer-events: auto;
 }
 
 .controls__drag {
@@ -755,8 +759,19 @@
 
 .notice {
   font-size: 0.8rem;
+  /* Pinned (was font-dependent, ~15.5-17px across platforms) so the
+     collapsed drawer's fixed 124px peek cuts exactly below the first notice
+     line on every device. */
+  line-height: 16px;
   color: var(--catan-brown-mid);
   margin-top: 4px;
+}
+/* Rendered when NO notice exists (pre-first-generation, or a URL-loaded
+   balanced map) to hold the attempts line's slot open, so the collapsed
+   drawer shows a quiet blank line there instead of the next control, and
+   nothing shifts when the first generation's text lands. */
+.notice--spacer {
+  height: 16px;
 }
 .notice--warn { color: var(--catan-red-bright); font-weight: 700; }
 

@@ -19,11 +19,6 @@ import {
 } from './icons';
 
 const MOBILE_QUERY = '(max-width: 899px)';
-// Height of the peek (handle) row when the drawer is collapsed. The
-// useLayoutEffect that drives transform reads offsetHeight off the drawer,
-// so the only thing this constant has to match is the *actual* rendered
-// height of `.controls__handle` (padding + drag bar + label ≈ 56px).
-const PEEK_PX = 56;
 
 const PLAYER_COUNTS: PlayerCount[] = [3, 4, 5, 6];
 
@@ -187,10 +182,47 @@ export function Controls() {
     return () => mql.removeEventListener('change', onChange);
   }, []);
 
+  // The collapsed height ("peek") is defined ONCE, in theme.css, as
+  // --drawer-peek (a fixed 124px plus the safe-area inset). env() cannot be
+  // read from JS directly, so the resolved pixel value is measured off a
+  // throwaway probe element styled with the variable. Re-measured on resize
+  // and orientation change because the inset differs between portrait and
+  // landscape; a resting collapsed drawer is re-glued to the new offset
+  // (its own offsetHeight changes with orientation too).
+  const peekRef = useRef(124);
+  const openRef = useRef(open);
+  openRef.current = open;
+  const isMobileRef = useRef(isMobile);
+  isMobileRef.current = isMobile;
+
+  useLayoutEffect(() => {
+    if (typeof window === 'undefined') return;
+    const measure = () => {
+      const probe = document.createElement('div');
+      probe.style.cssText =
+        'position:fixed;bottom:0;left:0;width:0;height:var(--drawer-peek);visibility:hidden;pointer-events:none;';
+      document.body.appendChild(probe);
+      const h = probe.getBoundingClientRect().height;
+      probe.remove();
+      if (h > 0) peekRef.current = h;
+      const el = drawerRef.current;
+      if (el && isMobileRef.current && !openRef.current) {
+        el.style.transform = `translateY(${Math.max(0, el.offsetHeight - peekRef.current)}px)`;
+      }
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    window.addEventListener('orientationchange', measure);
+    return () => {
+      window.removeEventListener('resize', measure);
+      window.removeEventListener('orientationchange', measure);
+    };
+  }, []);
+
   const closedOffset = () => {
     const el = drawerRef.current;
     if (!el) return 0;
-    return Math.max(0, el.offsetHeight - PEEK_PX);
+    return Math.max(0, el.offsetHeight - peekRef.current);
   };
 
   // Keep DOM transform in sync with the open/closed state. We don't use CSS
@@ -405,6 +437,13 @@ export function Controls() {
           Challenge rolled: <strong>{FLAVOR_LABELS[map.variants.challenge.rolledFlavor]}</strong>
           {map.variants.challenge.rolledTarget ? ` (${map.variants.challenge.rolledTarget})` : ''}
         </div>
+      )}
+      {/* The collapsed 124px peek reserves one notice line. When nothing
+          above rendered (before the first generation, or a URL-loaded
+          balanced map), this holds the slot so the next control doesn't
+          surface in the peek and nothing shifts when text arrives. */}
+      {!(fellBack && map) && !(map && !fellBack && attempts > 0) && !map?.variants.challenge.rolledFlavor && (
+        <div className="notice notice--spacer" aria-hidden="true" />
       )}
 
       <div className="controls__row">

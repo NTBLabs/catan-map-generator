@@ -25,11 +25,17 @@
   /* Spacing & radii */
   --radius-card: 14px;
   --radius-button: 12px;
-  /* Height of the collapsed options drawer: the peek (handle) row plus the
-     iOS home-indicator inset it sits above. Shared by the drawer's pre-mount
-     transform and the board container's bottom inset (app.css) so the two
-     cannot drift. Must track PEEK_PX in Controls.tsx. */
-  --drawer-peek: calc(56px + env(safe-area-inset-bottom));
+  /* Height of the collapsed options drawer: drag handle (45px) + the
+     Generate/Share row (48px + 8px collapsed margin + 4px body padding) +
+     one reserved 16px notice line (the attempts line) + 3px breathing, plus
+     the home-indicator inset. FIXED on purpose: a content-measured peek
+     would resize the drawer between generations (fallback notices run 2-3
+     lines) and move the board under the user. Taller notice stacks fall
+     below the fold and are revealed on open. This is the ONLY definition
+     site: Controls.tsx reads the RESOLVED value through a probe element, so
+     the JS cannot disagree with it (the old PEEK_PX constant ignored the
+     safe-area inset while the CSS included it). */
+  --drawer-peek: calc(124px + env(safe-area-inset-bottom));
   --shadow-card: 0 6px 16px rgba(0, 0, 0, 0.25);
   --shadow-button: 0 2px 6px rgba(0, 0, 0, 0.25);
 }
