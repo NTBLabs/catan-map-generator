@@ -138,8 +138,13 @@
   color: var(--catan-brown-dark);
   border: 2px solid var(--catan-gold);
   border-radius: 50%;
-  width: 44px;
-  height: 44px;
+  /* 48px OUTER (border-box, 44px inside the 2px ring), matching the rotate
+     pair's pill, whose 44px buttons sit inside the same 2px border. Before
+     this the pair rendered 48 tall next to 44px circles and the row read as
+     mismatched. 48 outer also keeps every target at or above the 44px
+     touch minimum. */
+  width: 48px;
+  height: 48px;
   font-size: 1.3rem;
   font-weight: 800;
   cursor: pointer;
@@ -155,9 +160,9 @@
 }
 .board__btn--label {
   width: auto;
-  min-width: 44px;
+  min-width: 48px;
   padding: 0 10px;
-  border-radius: 22px;
+  border-radius: 24px;
   font-size: 0.9rem;
   font-variant-numeric: tabular-nums;
 }
@@ -363,15 +368,31 @@
   display: block;
 }
 
-/* Always-visible drawer header: Generate plus the status line. The collapsed
-   peek is MEASURED from .controls__head (handle + this row) in Controls.tsx,
-   so heights in here must not depend on state — which is why the status line
-   below pins its height. */
+/* Always-visible drawer header: Generate centered with the status line
+   stacked under it, and the share button anchored out of flow at the right
+   edge so the centered stack stays centered. The collapsed peek is MEASURED
+   from .controls__head (handle + this block) in Controls.tsx, so heights in
+   here must not depend on state — which is why the status line below pins
+   its height. */
 .controls__header {
+  position: relative;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
   padding: 0 16px 10px;
+}
+/* In the column layout the global flex: 1 would stretch the button's HEIGHT;
+   a fixed comfortable width reads as the one primary action instead. */
+.controls__header .btn--primary {
+  flex: 0 0 auto;
+  width: 220px;
+  max-width: 100%;
+}
+.controls__share {
+  position: absolute;
+  top: 0;
+  right: 16px;
 }
 
 /* The generation status line. height is FIXED (not min-height) and the text
@@ -380,10 +401,10 @@
    best-effort. tests/drawer-status.test.ts asserts this rule keeps that
    shape. */
 .controls__status {
-  flex: 1 1 0;
-  min-width: 0;
+  width: 100%;
   height: 20px;
   line-height: 20px;
+  text-align: center;
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--catan-brown-mid);
@@ -582,13 +603,6 @@
   justify-content: center;
   padding: 0;
   width: 48px;
-}
-/* Body placement: the share action reads as a labeled button there, not a
-   bare icon squeezed beside Generate (its pre-restructure home). */
-.share__btn--labeled {
-  width: auto;
-  padding: 0 16px;
-  gap: 8px;
 }
 
 /* Full-screen dimming scrim. Portaled to <body>, so it always covers the

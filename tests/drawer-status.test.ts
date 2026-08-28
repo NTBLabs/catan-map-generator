@@ -15,21 +15,21 @@ import { statusFor, type GenStatusKind } from '../src/ui/status';
 
 describe('drawer peek math', () => {
   it('peek is header height plus safe-area inset, rounded up', () => {
-    expect(computePeekPx(103, 34)).toBe(137);
-    expect(computePeekPx(103, 0)).toBe(103);
-    expect(computePeekPx(103.4, 20.6)).toBe(124);
+    expect(computePeekPx(129, 34)).toBe(163);
+    expect(computePeekPx(129, 0)).toBe(129);
+    expect(computePeekPx(129.4, 20.6)).toBe(150);
   });
 
   it('clamps garbage inputs instead of poisoning the layout', () => {
     expect(computePeekPx(NaN, 34)).toBe(34);
-    expect(computePeekPx(103, NaN)).toBe(103);
+    expect(computePeekPx(129, NaN)).toBe(129);
     expect(computePeekPx(-5, -5)).toBe(0);
     expect(computePeekPx(Infinity, 0)).toBe(0);
   });
 
   it('collapse offset is drawer height minus peek, never negative', () => {
-    expect(collapsedOffsetPx(655, 137)).toBe(518);
-    expect(collapsedOffsetPx(100, 137)).toBe(0);
+    expect(collapsedOffsetPx(655, 163)).toBe(492);
+    expect(collapsedOffsetPx(100, 163)).toBe(0);
   });
 
   it('the static CSS fallback matches DRAWER_PEEK_FALLBACK_PX', () => {
@@ -56,28 +56,28 @@ describe('open-drawer lift', () => {
     });
 
   it('lifts a portrait phone far enough to clear the top tile row', () => {
-    // iPhone-class portrait: 402x874, peek 137 -> container 402x737.
-    const l = lift(402, 737, 874, base);
-    // Row bottom sits at (737-402)/2 + 4.659 * (402/13.318) = 308.1px; the
-    // open drawer top is 218.5px. Lift must cover the 89.6px gap plus pad.
-    expect(l).toBeGreaterThanOrEqual(90);
-    expect(l).toBeLessThanOrEqual(110);
+    // iPhone-class portrait: 402x874, peek 163 (129 header + 34 inset) ->
+    // container 402x711.
+    const l = lift(402, 711, 874, base);
+    // Row bottom sits at (711-402)/2 + 4.659 * (402/13.318) = 295.1px; the
+    // open drawer top is 218.5px. Lift must cover the 76.6px gap plus pad.
+    expect(l).toBeGreaterThanOrEqual(80);
+    expect(l).toBeLessThanOrEqual(100);
   });
 
   it('landscape needs no lift when the row already clears the sheet', () => {
-    // 874x402 landscape, peek 124 -> container 874x278: height-limited fit
-    // puts the row bottom at 4.659 * (278/13.318) = 97.3px, drawer top at
-    // 100.5px. Within the 8px pad this still asks for a few px, never a
-    // phone-sized lift.
-    const l = lift(874, 278, 402, base);
-    expect(l).toBeLessThanOrEqual(10);
+    // 874x402 landscape, peek 150 -> container 874x252: height-limited fit
+    // puts the row bottom at 4.659 * (252/13.318) = 88.2px, drawer top at
+    // 100.5px. Already clear, even with the 8px pad.
+    expect(lift(874, 252, 402, base)).toBe(0);
+    expect(lift(874, 252, 402, expansion)).toBe(0);
   });
 
   it('scales up for tablets and the larger expansion board', () => {
-    const tablet = lift(810, 977, 1080, base);
-    expect(tablet).toBeGreaterThanOrEqual(97);
-    const exp = lift(402, 737, 874, expansion);
-    expect(exp).toBeGreaterThanOrEqual(65);
+    const tablet = lift(810, 951, 1080, base);
+    expect(tablet).toBeGreaterThanOrEqual(90);
+    const exp = lift(402, 711, 874, expansion);
+    expect(exp).toBeGreaterThanOrEqual(55);
     expect(exp).toBeLessThan(tablet);
   });
 

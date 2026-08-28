@@ -32,7 +32,7 @@
      drawerMetrics.ts, which also carries the 103px in
      DRAWER_PEEK_FALLBACK_PX — a test keeps the two equal). Consumed by the
      board's bottom inset and the drawer's pre-mount anti-flash transform. */
-  --drawer-peek: calc(103px + env(safe-area-inset-bottom));
+  --drawer-peek: calc(129px + env(safe-area-inset-bottom));
   --shadow-card: 0 6px 16px rgba(0, 0, 0, 0.25);
   --shadow-button: 0 2px 6px rgba(0, 0, 0, 0.25);
 }
