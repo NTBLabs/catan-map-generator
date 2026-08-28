@@ -60,12 +60,14 @@ export const RotateRightIcon = (p: IconProps) => (
 
 export const ResetViewIcon = (p: IconProps) => (
   <Outline width={24} height={24} strokeWidth={2.5} {...p}>
-    {/* 300° anticlockwise arc (sweep 0) from the left side (180°) around
-        bottom, right, and top to the top-left (-120°), with the chevron at
-        the end pointing along the travel: the same anticlockwise reading
-        as the old U+27F2. */}
-    <path d="M 4 13 A 8 8 0 1 0 8 6.07" />
-    <polyline points="11.98 6.42 8 6.07 9.69 2.44" />
+    {/* Feather's rotate-ccw (MIT), coordinates verbatim: a ~270° arc with a
+        wide open quadrant and an axis-aligned L-bracket head the arc sweeps
+        into. Known-good at 24px. Two hand-derived versions of this glyph
+        failed in a row (one clipped, one read as a circle with a stray
+        tick), so the coordinates are deliberately NOT ours: if this glyph
+        needs to change, start from another proven icon, not from math. */}
+    <polyline points="1 4 1 10 7 10" />
+    <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
   </Outline>
 );
 
