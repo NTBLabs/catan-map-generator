@@ -1098,7 +1098,14 @@ export function Board() {
               moves it right. The arrows point OUTWARD as a matched pair.
               Do not re-derive this mapping from the TOP edge: that anchor
               produced an inverted assignment twice; the near edge is the
-              reference, and the rotation math itself is untouched. */}
+              reference, and the rotation math itself is untouched.
+              The READOUT is a step counter that follows the buttons, not
+              the board's angle in any standard convention: → increments by
+              30 and ← decrements, so it displays (360 - rotation) % 360.
+              That inversion is deliberate and display-only (nothing else
+              consumes the displayed number; the SVG transform, export, and
+              share links all use or bake the real angle), so do not
+              "correct" the readout back to the raw rotation value. */}
           <button
             className="board__rotate-btn"
             onClick={() => rotateBy(30)}
@@ -1122,7 +1129,7 @@ export function Board() {
           aria-label="Reset rotation"
           title="Reset rotation"
         >
-          {rotation}<span className="board__btn-degree">°</span>
+          {(360 - rotation) % 360}<span className="board__btn-degree">°</span>
         </button>
         <button
           className="board__btn"
