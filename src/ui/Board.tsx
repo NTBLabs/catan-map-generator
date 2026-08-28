@@ -1088,21 +1088,26 @@ export function Board() {
             semantics and label. The readout and the pan/zoom reset stay
             separate siblings to the right. */}
         <div className="board__rotate" role="group" aria-label="Rotate board">
+          {/* Plain arrows matched to the board's APPARENT motion: rotateBy(-30)
+              is counter-clockwise in SVG's y-down space, which moves the
+              board's top edge LEFT, so the left button carries ←. The old
+              circular glyphs read as direction labels pointing the wrong way
+              and collided with the reset control's circular glyph. */}
           <button
             className="board__rotate-btn"
             onClick={() => rotateBy(-30)}
-            aria-label="Rotate counter-clockwise"
-            title="Rotate 30° counter-clockwise"
+            aria-label="Rotate left"
+            title="Rotate 30° left"
           >
-            ↺
+            ←
           </button>
           <button
             className="board__rotate-btn"
             onClick={() => rotateBy(30)}
-            aria-label="Rotate clockwise"
-            title="Rotate 30° clockwise"
+            aria-label="Rotate right"
+            title="Rotate 30° right"
           >
-            ↻
+            →
           </button>
         </div>
         <button
