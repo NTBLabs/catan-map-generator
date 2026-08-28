@@ -18,7 +18,7 @@ import {
   WhatsAppIcon,
 } from './icons';
 
-const MOBILE_QUERY = '(max-width: 899px)';
+import { MOBILE_QUERY } from './openLift';
 
 const PLAYER_COUNTS: PlayerCount[] = [3, 4, 5, 6];
 
@@ -170,7 +170,11 @@ export function Controls() {
   const [isMobile, setIsMobile] = useState(() =>
     typeof window === 'undefined' ? false : window.matchMedia(MOBILE_QUERY).matches,
   );
-  const [open, setOpen] = useState(false);
+  // In the store (not local state) so Board can lift its container while
+  // the drawer is open; see ui/openLift.ts. Otherwise used exactly as the
+  // local flag it replaced.
+  const open = useAppStore(s => s.drawerOpen);
+  const setOpen = useAppStore(s => s.setDrawerOpen);
   const drawerRef = useRef<HTMLElement | null>(null);
   const handleRef = useRef<HTMLButtonElement | null>(null);
 
@@ -305,7 +309,7 @@ export function Controls() {
         aria-expanded={drawerOpen}
         aria-controls="controls-body"
         aria-label={drawerOpen ? 'Collapse options' : 'Expand options'}
-        onClick={() => isMobile && setOpen(o => !o)}
+        onClick={() => isMobile && setOpen(!open)}
       >
         <span className="controls__drag" aria-hidden />
         <span className="controls__handle-label">{drawerOpen ? 'Hide options' : 'Options'}</span>

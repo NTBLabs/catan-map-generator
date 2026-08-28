@@ -96,6 +96,10 @@
      in landscape). Desktop resets this: there the controls are a side panel
      and the bottom of the viewport is really available. */
   bottom: var(--drawer-peek);
+  /* Matches the drawer's 0.28s snap so the open-drawer lift (inline top and
+     bottom written by Board.tsx) glides with the sheet instead of jumping.
+     Also smooths the once-per-session 4px bare-to-notice peek change. */
+  transition: top 0.28s ease, bottom 0.28s ease;
   overflow: hidden;
   touch-action: none;
   /* Scope paint/layout work to this subtree — tells the browser it doesn't
