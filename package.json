@@ -1,5 +1,5 @@
 {
-  "name": "catan-map-generator",
+  "name": "catan-lab",
   "private": true,
   "version": "1.0.0",
   "description": "Constraint-driven balanced board generator for Catan.",
@@ -7,7 +7,7 @@
   "homepage": "https://catan.ntblabs.dev",
   "repository": {
     "type": "git",
-    "url": "https://github.com/NTBLabs/catan-map-generator.git"
+    "url": "https://github.com/NTBLabs/catan-lab.git"
   },
   "author": "Nathan Thomas-Benke",
   "license": "MIT",

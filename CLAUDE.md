@@ -214,8 +214,9 @@ the repo root would NOT be copied and the custom domain would reset on every
 publish. If you ever move back to a Pages project subpath, `base` goes back to
 `'/<repo-name>/'` and `public/CNAME` comes out.
 
-The GitHub remote is `NTBLabs/catan-map-generator`. The repo was transferred
-from `nathantbenke` during the 2026-06 to 2026-08 gap.
+The GitHub remote is `NTBLabs/catan-lab`. The repo was transferred from
+`nathantbenke` during the 2026-06 to 2026-08 gap and renamed from
+`catan-map-generator` in 2026-09.
 
 ## Working tree and the stress branch
 

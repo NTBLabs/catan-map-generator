@@ -457,6 +457,14 @@ how much downstream work they block.
    Pages path that existing share links resolve through, and every link Nathan
    has already sent out is a permanent URL.
 
+   **Reversed 2026-09-01.** The repository was renamed to `NTBLabs/catan-lab`.
+   The share-link concern above no longer applies: links resolve through the
+   custom domain `catan.ntblabs.dev`, not the Pages project path, and GitHub
+   redirects renamed repositories in any case. The npm package name in
+   `package.json` changed to `catan-lab` to keep matching the repo. Historical
+   references to the old name in `vite.config.ts`, `ARCHITECTURE.md`, and
+   earlier sections of this document are left as written.
+
 3. **The scenario-toggle finding.** Section 6. Force the toggles off in scenario
    mode, expose a "fast mode", or leave it as documented behavior?
 

@@ -686,7 +686,7 @@ export function Controls() {
       <footer className="controls__footer">
         <a
           className="controls__source"
-          href="https://github.com/NTBLabs/catan-map-generator"
+          href="https://github.com/NTBLabs/catan-lab"
           target="_blank"
           rel="noopener noreferrer"
         >
