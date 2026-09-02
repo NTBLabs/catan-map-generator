@@ -175,5 +175,7 @@ and the iOS Safari quirks the mobile build had to work around, see
 
 MIT, see [LICENSE](./LICENSE).
 
-Catan is the trademark of Catan Studio and KOSMOS. This project is an
-unaffiliated fan tool.
+CATAN is a trademark of CATAN GmbH. This project is an unaffiliated fan
+tool and is not endorsed by or associated with CATAN GmbH or Catan Studio.
+All artwork here is original. See [THIRD-PARTY.md](./THIRD-PARTY.md) for
+notices on embedded third-party icon assets.
