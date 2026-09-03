@@ -1,3 +1,15 @@
+/* Viewport lock for the board app. The document never scrolls: the drawer
+   body and the SVG pan own all scrolling. Lives here, not in theme.css,
+   because theme.css is shared with the /legal entry, which is a normal
+   scrolling document. (It sat in theme.css until 2026-09, when the legal
+   page's override lost to it on source order in dev.) */
+html,
+body,
+#root {
+  height: 100%;
+  overflow: hidden;
+}
+
 .app {
   position: relative;
   height: 100dvh;

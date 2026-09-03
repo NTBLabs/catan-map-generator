@@ -1,0 +1,20 @@
+/* Footer disclosure line. Same size, color, and link treatment as the
+   drawer's "Source on GitHub" link (.controls__source in app.css) so the
+   two read as one footer: the quietest text on the surface, not competing
+   with the help text above it. */
+.legal-notice {
+  margin: 8px 0 0;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--catan-brown-mid);
+  opacity: 0.85;
+}
+.legal-notice__link {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(125, 75, 30, 0.35);
+}
+.legal-notice__link:hover,
+.legal-notice__link:focus-visible {
+  color: var(--catan-brown-dark);
+}

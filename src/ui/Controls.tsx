@@ -5,6 +5,7 @@ import { useAppStore } from '../state/store';
 import { PRODUCING_RESOURCES } from '../game/constants';
 import type { ChallengeFlavor, PlayerCount, ProducingResource } from '../game/types';
 import { downloadBoardImage } from './exportImage';
+import { LegalNotice } from './LegalNotice';
 import {
   CheckIcon,
   CloseIcon,
@@ -682,7 +683,9 @@ export function Controls() {
       {/* Drawer footer. Deliberately the quietest thing in the panel and
           deliberately NOT in the header: the header carries one link home to
           the studio, and this is a second destination that only a small
-          fraction of visitors want. */}
+          fraction of visitors want. The trademark and non-affiliation line
+          sits under the link at the same size: an always-visible strip was
+          tried and reverted because it undid the tuned phone fit. */}
       <footer className="controls__footer">
         <a
           className="controls__source"
@@ -692,6 +695,7 @@ export function Controls() {
         >
           Source on GitHub
         </a>
+        <LegalNotice />
       </footer>
 
       </div>

@@ -1,0 +1,143 @@
+/* /legal page. Loaded only by the legal entry (src/legal.tsx), never by the
+   app, so the element-level overrides at the top cannot reach the generator.
+
+   Reuses the app's tokens and surfaces rather than introducing anything: the
+   red ground and header pill from .app / .app__title, the cream card with the
+   gold rule from .controls, the uppercase tracked headings from
+   .share-sheet__title and .controls__label, and the quiet link treatment
+   from .controls__source. Nothing decorative. */
+
+/* The page scrolls the document normally. That works only because the
+   viewport lock (height: 100%, overflow: hidden on html/body/#root) lives
+   in app.css, which this entry never imports; theme.css carries tokens and
+   base type only. An override here was tried first and lost on source
+   order in dev, so do not reintroduce the lock into theme.css. */
+.legal {
+  min-height: 100dvh;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(212, 68, 28, 0.35), transparent 60%),
+    var(--catan-red-deep);
+  padding: calc(14px + env(safe-area-inset-top)) 16px calc(28px + env(safe-area-inset-bottom));
+}
+
+/* Measure: about 68 characters at 1rem, the comfortable upper end for
+   running text. Shared by the header row so the pill and card edges line
+   up. */
+.legal__header,
+.legal__card {
+  max-width: 42rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.legal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+  margin-bottom: 14px;
+}
+
+/* Same pill as the app header (.app__title in app.css), minus the phone
+   step-down: here it has the full row to itself. */
+.legal__title {
+  background: rgba(30, 12, 6, 0.88);
+  border: 1px solid rgba(218, 149, 75, 0.35);
+  border-radius: 999px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--catan-gold);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  font-size: 1.125rem;
+  padding: 6px 14px;
+}
+
+.legal__back {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--catan-cream);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(244, 228, 188, 0.45);
+  opacity: 0.9;
+}
+.legal__back:hover,
+.legal__back:focus-visible {
+  opacity: 1;
+  border-bottom-color: var(--catan-cream);
+}
+
+.legal__card {
+  background: var(--catan-cream);
+  color: var(--catan-brown-dark);
+  border: 3px solid var(--catan-gold);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  padding: 26px 24px 18px;
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+.legal__card h1 {
+  margin: 0 0 4px;
+  font-weight: 800;
+  font-size: 1.35rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--catan-brown-dark);
+}
+
+.legal__updated {
+  margin: 0 0 8px;
+  font-size: 0.78rem;
+  font-style: italic;
+  color: var(--catan-brown-mid);
+}
+
+.legal__card h2 {
+  margin: 26px 0 6px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--catan-brown-dark);
+}
+
+.legal__card p {
+  margin: 0 0 10px;
+}
+.legal__contact {
+  margin-bottom: 4px;
+}
+
+.legal__card a {
+  color: var(--catan-brown-mid);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(125, 75, 30, 0.35);
+  /* Long addresses and URLs must wrap inside the measure on phones rather
+     than push the card past the viewport. */
+  overflow-wrap: anywhere;
+}
+.legal__card a:hover,
+.legal__card a:focus-visible {
+  color: var(--catan-brown-dark);
+  border-bottom-color: var(--catan-brown-dark);
+}
+
+/* Mirrors .controls__footer: dashed rule, then the disclosure line. */
+.legal__footer {
+  margin-top: 26px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(125, 75, 30, 0.25);
+}
+
+@media (max-width: 599px) {
+  .legal {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+  .legal__card {
+    padding: 20px 16px 14px;
+  }
+}

@@ -56,3 +56,41 @@ either sync the pinch accumulator on every wheel-driven scale change (via
 `useGesture`'s `from` option), or route all zoom through a single recognizer
 and drop the other. Different mechanism, different symptom (a snap at gesture
 *start*, not a jump mid-drag), so it wants its own diagnostic pass.
+
+---
+
+## OPEN (2026-09-02): pending amendment to /legal for the board counter or any analytics beacon
+
+**Status: pending, not applied. Do not publish ahead of the feature.**
+
+The Privacy section on `/legal` states the current fact: the app makes zero
+automatic requests to any external origin, sets no cookies, and sends nothing
+anywhere. That section must stay accurate at every commit, so the text below
+is NOT on the page yet. Apply it in the same commit that ships the board
+counter or any analytics beacon, replacing the Privacy section of
+`src/ui/LegalPage.tsx` and bumping the "Last updated" line. The replacement
+text follows verbatim.
+
+```markdown
+When the board counter or any analytics beacon ships, replace the Privacy
+section of /legal with the following in the same commit, and update the
+"Last updated" date:
+
+## Privacy
+
+Catan Lab runs in your browser. There is no account and no login, and the
+boards you generate are never sent anywhere. Board configurations are
+encoded in the share URL itself, so a link you share contains the board and
+nothing about you.
+
+The site keeps a running count of how many boards have been generated in
+total. When you generate one, the app sends a single anonymous signal that
+increments that counter. It carries no board data, no identifier, and
+nothing about you, and no per-visitor record is kept.
+
+The site also uses privacy-preserving visitor analytics that set no cookies
+and collect no personal data.
+
+No personal information is collected from anyone using this site,
+regardless of age.
+```

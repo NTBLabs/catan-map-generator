@@ -70,16 +70,19 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Shared ground for every entry: tokens, base type, and the page color.
+   Deliberately NO layout here. The viewport lock the board app needs
+   (height: 100% plus overflow: hidden on these same elements) lives in
+   app.css, because /legal is a scrolling document that shares this file
+   and must not inherit it. */
 html,
 body,
 #root {
-  height: 100%;
   margin: 0;
   background: var(--catan-red-deep);
   color: var(--catan-cream);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   font-size: 16px;
-  overflow: hidden;
 }
 
 button {

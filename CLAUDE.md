@@ -87,7 +87,12 @@ src/
     TileIcon.tsx    Tile art and port glyphs
     exportImage.ts  SVG to PNG export by copying computed styles onto a clone
     ParentLockup.tsx  NTB Labs parent lockup used in the header. Inlined wordmark paths.
-    icons.tsx, app.css, theme.css, parentLockup.css, ntb-labs-wordmark.svg
+    LegalPage.tsx   The /legal notice. Fixed copy; its Privacy section must match reality.
+    LegalNotice.tsx Trademark and non-affiliation footer line, on every page
+    icons.tsx, app.css, theme.css, legal.css, legalNotice.css, parentLockup.css,
+    ntb-labs-wordmark.svg
+  legal.tsx     Entry for legal.html, the second Vite input. Ships as dist/legal.html,
+                served at /legal. No router: Pages and the dev server both resolve it.
   url/
     encode.ts       Share links. v3 bit-packed wire format. Pre-v3 payloads are rejected
 tests/          Vitest. Unit tests plus env-gated stress harnesses
