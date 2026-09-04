@@ -37,10 +37,10 @@ export function LegalPage() {
 
         <h2>What Catan Lab is</h2>
         <p>
-          Catan Lab is a free browser tool that generates board layouts for the
+          Catan Lab is a browser tool that generates board layouts for the
           board game Catan. It is an independent fan project built and
-          maintained by NTB Labs. There is no account system, nothing is sold,
-          and no money changes hands.
+          maintained by NTB Labs. It is provided free of charge and requires
+          no account.
         </p>
 
         <h2>No affiliation</h2>
@@ -102,16 +102,15 @@ export function LegalPage() {
 
         <h2>Using Catan Lab</h2>
         <p>
-          Boards you generate are yours. Use them for game nights, clubs,
-          tournaments, streams, videos, or anything else, commercial or not. No
-          attribution is required, though it is appreciated.
+          Boards generated with Catan Lab may be used for any purpose,
+          commercial or otherwise, including game nights, clubs, tournaments,
+          streams, and videos. No attribution is required.
         </p>
         <p>
-          The site itself is a different matter. Please do not republish it as
-          your own, scrape it at volume in a way that degrades it for other
-          people, or rebuild it as a competing service from its output. The
-          source code is public and MIT licensed, so if you want to build on
-          the code, do that instead.
+          The site itself may not be republished, scraped at a volume that
+          degrades it for other users, or rebuilt from its output as a
+          competing service. The source code is public under the MIT license,
+          which permits building on the code.
         </p>
 
         <h2>Source code</h2>
@@ -122,10 +121,10 @@ export function LegalPage() {
 
         <h2>Links to other sites</h2>
         <p>
-          The share buttons hand a board link to WhatsApp, Reddit, Telegram, or
-          your email client only when you click one. Those services are outside
-          NTB Labs' control and have their own terms and privacy practices. The
-          site also links to GitHub and to{' '}
+          The share buttons pass a board link to WhatsApp, Reddit, Telegram, or
+          your email client only when you click one. These third-party services
+          are not controlled by NTB Labs and are subject to their own terms and
+          privacy practices. The site also links to GitHub and to{' '}
           <a href="https://ntblabs.dev">ntblabs.dev</a>.
         </p>
 
@@ -142,9 +141,9 @@ export function LegalPage() {
         <h2>Privacy</h2>
         <p>
           Catan Lab runs entirely in your browser. There is no account and no
-          login, nothing you do here is sent to a server, and no cookies are
-          set. Board configurations are encoded in the share URL itself, so a
-          link you share contains the board and nothing about you.
+          login, no data is transmitted to any server, and no cookies are set.
+          Board configurations are encoded in the share URL itself, so a link
+          you share contains the board and nothing about you.
         </p>
         <p>
           No personal information is collected from anyone using this site,

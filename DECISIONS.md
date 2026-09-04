@@ -78,15 +78,15 @@ section of /legal with the following in the same commit, and update the
 
 ## Privacy
 
-Catan Lab runs in your browser. There is no account and no login, and the
-boards you generate are never sent anywhere. Board configurations are
+Catan Lab runs in your browser. There is no account and no login, and
+generated boards are not transmitted to any server. Board configurations are
 encoded in the share URL itself, so a link you share contains the board and
 nothing about you.
 
-The site keeps a running count of how many boards have been generated in
-total. When you generate one, the app sends a single anonymous signal that
-increments that counter. It carries no board data, no identifier, and
-nothing about you, and no per-visitor record is kept.
+The site keeps a running total of boards generated. Each generation sends a
+single anonymous signal that increments that counter. The signal carries no
+board data, no identifier, and no personal information, and no per-visitor
+record is kept.
 
 The site also uses privacy-preserving visitor analytics that set no cookies
 and collect no personal data.

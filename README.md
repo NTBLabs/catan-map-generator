@@ -70,7 +70,7 @@ checks so the scenario can actually happen.
 | --- | --- |
 | **Balanced** | The default. Full fairness, resource health, port balance, spatial pip balance, and strategic diversity checks all apply. |
 | **Scarcity** | One resource is starved to 4 total pips or fewer, so it stays rare all game. Choose the resource or leave it on Any. |
-| **Boom-or-bust** | One resource puts at least 60 percent of its pips on a single number. When that number rolls it is payday, otherwise nothing. |
+| **Boom-or-bust** | One resource puts at least 60 percent of its pips on a single number. When it rolls, boom. When it doesn't, bust. |
 | **Drought** | At least three mutually adjacent hexes all carry low yield numbers (2, 3, 11, 12), creating a dead zone you have to plan around. |
 | **Rich vs Poor** | One of the three board axes splits the map. The rich side holds at least 65 percent of the pip mass and every numbered hex on it is worth 4 or more pips. The board draws the dividing line and labels both sides. |
 | **Hot Zone** | Red numbers (6 and 8) form one connected cluster, at least four hexes on the base board and five on the expansion, spanning three or more resources. The cluster is outlined on the board. |
